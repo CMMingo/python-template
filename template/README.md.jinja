@@ -1,0 +1,173 @@
+# {{ project_name }}
+
+{{ description }}
+
+---
+
+## Requirements
+
+- [uv](https://docs.astral.sh/uv/) — dependency management
+- [Docker](https://docs.docker.com/get-docker/) *(optional)* — containerised runs
+- [DVC](https://dvc.org/) *(optional)* — data and pipeline versioning (installed as dev dependency)
+
+---
+
+## Quick start
+
+```bash
+bash scripts/setup.sh
+source .venv/bin/activate
+```
+
+`setup.sh` will: install uv if missing, sync dependencies, install pre-commit hooks, initialise DVC, and create `.env` from `.env.example`.
+
+---
+
+## Project structure
+
+```
+{{ project_name }}/
+├── {{ project_name }}/         # importable package
+│   └── utils/
+│       ├── logger.py           # shared logger (see Logging)
+│       └── __init__.py
+├── tests/                      # pytest test suite
+├── notebooks/                  # Jupyter notebooks (not committed to Docker)
+├── scripts/                    # one-off scripts and setup helpers
+├── configs/
+│   ├── config.yaml             # main config
+│   └── logging.yaml            # logging config (loaded automatically)
+├── data/
+│   ├── raw/                    # original, immutable data (DVC-tracked)
+│   └── processed/              # cleaned / transformed data (DVC-tracked)
+├── runs/
+│   ├── mlruns/                 # MLflow tracking (gitignored)
+│   └── artifacts/              # model checkpoints, outputs (DVC-tracked)
+├── results/                    # evaluation outputs, plots (gitignored)
+├── logs/                       # runtime logs (gitignored)
+├── front/                      # frontend code
+│   ├── src/
+│   └── public/
+├── docs/                       # generated docs (gitignored)
+├── Dockerfile
+├── docker-compose.yml
+├── dvc.yaml                    # DVC pipeline definition
+├── pyproject.toml
+├── Makefile
+├── CLAUDE.md                   # project context for AI assistants
+└── CHANGELOG.md
+```
+
+---
+
+## Commands
+
+### Environment
+
+| Command | Description |
+|---|---|
+| `make setup` | Bootstrap a fresh clone — installs uv, deps, pre-commit hooks, initialises DVC, creates `.env` |
+| `make install` | Install dependencies and pre-commit hooks (assumes uv is already installed) |
+
+### Code quality
+
+| Command | Description |
+|---|---|
+| `make test` | Run tests with coverage report |
+| `make test-fast` | Run tests without coverage |
+| `make lint` | Lint with Ruff |
+| `make format` | Format with Ruff |
+| `make fix` | Lint, auto-fix, and format in one step |
+| `make pre-commit` | Run all pre-commit hooks on every file |
+
+### Docs
+
+| Command | Description |
+|---|---|
+| `make docs` | Generate HTML docs into `docs/build/` using pdoc |
+| `make docs-serve` | Serve docs locally with live reload |
+
+### DVC
+
+| Command | Description |
+|---|---|
+| `make dvc-pull` | Pull data and artifacts from the DVC remote |
+| `make dvc-push` | Push data and artifacts to the DVC remote |
+| `make dvc-repro` | Reproduce the full DVC pipeline |
+
+Run a single stage or check status directly:
+
+```bash
+uv run dvc repro <stage_name>
+uv run dvc status
+```
+
+### Docker
+
+| Command | Description |
+|---|---|
+| `make docker-build` | Build the Docker image |
+| `make docker-up` | Start services in detached mode |
+| `make docker-down` | Stop and remove containers |
+
+### Cleanup
+
+| Command | Description |
+|---|---|
+| `make clean` | Remove build artifacts, caches, and compiled files |
+
+---
+
+## Configuration
+
+The main config lives in `configs/config.yaml`. For local overrides (secrets, local paths), create `configs/config.local.yaml` — it is gitignored.
+
+Copy `.env.example` to `.env` and fill in your values. `.env` is gitignored.
+
+---
+
+## Logging
+
+Logging is configured via `configs/logging.yaml` and loaded automatically on the first call to `get_logger`. Falls back to console + dated file handler if the YAML is missing.
+
+```python
+from {{ project_name }}.utils.logger import get_logger
+
+logger = get_logger(__name__)
+logger.info("Starting process")
+```
+
+Logs are written to `logs/` (gitignored). The file handler rotates at 10 MB, keeping 5 backups.
+
+---
+
+## CI/CD
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `ci.yml` | push / PR to `main` | lint, format check, tests |
+| `cd.yml` | manual (`workflow_dispatch`) | build & push Docker image to GHCR |
+
+To enable automatic CD on version tags, uncomment the `push` block in `.github/workflows/cd.yml` and push a tag:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+---
+
+## Contributing
+
+1. Pick or create an issue using one of the templates in `.github/ISSUE_TEMPLATE/`
+2. Create a branch: `git checkout -b feat/your-feature`
+3. Make your changes — `make fix` before committing
+4. Open a PR using the pull request template
+5. CI must pass before merging
+{% if open_source_license != "None" %}
+
+---
+
+## License
+
+{{ open_source_license }}
+{% endif %}

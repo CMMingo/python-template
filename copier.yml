@@ -1,0 +1,25 @@
+project_name:
+  type: str
+  help: Project name (used for the package folder and pyproject.toml)
+
+description:
+  type: str
+  help: Short description of the project
+  default: ""
+
+python_version:
+  type: str
+  help: Minimum Python version
+  default: "3.12"
+
+open_source_license:
+  type: str
+  help: License
+  default: MIT
+  choices: [MIT, Apache-2.0, GPL-3.0, None]
+
+# ---- internal ----
+_subdirectory: template
+_exclude:
+  - copier.yml
+  - README.md         # the template's own readme, not the generated project's

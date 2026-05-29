@@ -1,0 +1,70 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking / linting
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/
+
+# Dev tools
+.pre-commit-config.yaml
+.vscode/
+.idea/
+
+# CI/CD
+.github/
+
+# DVC
+.dvc/
+.dvcignore
+dvc.yaml
+
+# Data & artifacts (mount these as volumes instead)
+data/
+logs/
+runs/
+results/
+
+# Frontend (build separately)
+front/
+
+# Docs & meta
+docs/
+CHANGELOG.md
+CLAUDE.md
+README.md
+*.md
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db

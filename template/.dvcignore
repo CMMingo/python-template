@@ -1,0 +1,8 @@
+# DVC ignore file — same syntax as .gitignore
+# Files listed here are ignored by DVC (not tracked, not pushed)
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+logs/

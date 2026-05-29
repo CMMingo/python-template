@@ -1,0 +1,20 @@
+FROM python:{{ python_version }}-slim
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+# Copy dependency files first for better layer caching
+COPY pyproject.toml uv.lock* ./
+
+# Install dependencies (no dev extras)
+RUN uv sync --no-dev --frozen
+
+# Copy source code
+COPY {{ project_name }}/ ./{{ project_name }}/
+
+# Use uv's managed Python
+ENV PATH="/app/.venv/bin:$PATH"
+
+CMD ["python", "-m", "{{ project_name }}"]

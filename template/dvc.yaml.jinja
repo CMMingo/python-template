@@ -1,0 +1,42 @@
+# DVC Pipeline
+# Docs: https://dvc.org/doc/user-guide/project-structure/dvcyaml-files
+#
+# Run the full pipeline:   dvc repro
+# Run a single stage:      dvc repro <stage_name>
+# Check status:            dvc status
+# Push data/artifacts:     dvc push
+
+stages:
+
+  prepare:
+    cmd: python -m {{ project_name }}.pipeline.prepare
+    deps:
+      - data/raw
+      - {{ project_name }}/pipeline/prepare.py
+    outs:
+      - data/processed
+
+  train:
+    cmd: python -m {{ project_name }}.pipeline.train
+    deps:
+      - data/processed
+      - {{ project_name }}/pipeline/train.py
+      - configs/config.yaml
+    outs:
+      - runs/artifacts/model
+    metrics:
+      - runs/artifacts/metrics.json:
+          cache: false
+
+  evaluate:
+    cmd: python -m {{ project_name }}.pipeline.evaluate
+    deps:
+      - data/processed
+      - runs/artifacts/model
+      - {{ project_name }}/pipeline/evaluate.py
+    metrics:
+      - runs/artifacts/evaluation.json:
+          cache: false
+    plots:
+      - runs/artifacts/plots.csv:
+          cache: false

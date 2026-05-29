@@ -1,0 +1,82 @@
+PROJECT_NAME := {{ project_name }}
+
+.DEFAULT_GOAL := help
+
+.PHONY: help setup install test test-fast lint format fix pre-commit docs clean \
+        dvc-pull dvc-push dvc-repro docker-build docker-up docker-down
+
+help:  ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+# ── Environment ────────────────────────────────────────────────────────────────
+
+setup:  ## Bootstrap a fresh clone (install uv, deps, pre-commit, DVC, .env)
+	bash scripts/setup.sh
+
+install:  ## Install dependencies and pre-commit hooks
+	uv sync --all-extras
+	uv run pre-commit install
+
+# ── Code quality ───────────────────────────────────────────────────────────────
+
+test:  ## Run tests with coverage
+	uv run pytest
+
+test-fast:  ## Run tests without coverage
+	uv run pytest --no-cov
+
+lint:  ## Lint with Ruff
+	uv run ruff check .
+
+format:  ## Format with Ruff
+	uv run ruff format .
+
+fix:  ## Lint and auto-fix with Ruff
+	uv run ruff check --fix .
+	uv run ruff format .
+
+pre-commit:  ## Run pre-commit hooks on all files
+	uv run pre-commit run --all-files
+
+# ── Docs ───────────────────────────────────────────────────────────────────────
+
+docs:  ## Generate HTML docs with pdoc and open in browser
+	uv run --with pdoc pdoc --output-dir docs/build $(PROJECT_NAME)
+	@echo "Docs generated at docs/build/index.html"
+
+docs-serve:  ## Serve docs locally with live reload
+	uv run --with pdoc pdoc $(PROJECT_NAME)
+
+# ── DVC ────────────────────────────────────────────────────────────────────────
+
+dvc-pull:  ## Pull data and artifacts from remote
+	uv run dvc pull
+
+dvc-push:  ## Push data and artifacts to remote
+	uv run dvc push
+
+dvc-repro:  ## Reproduce the full DVC pipeline
+	uv run dvc repro
+
+# ── Docker ─────────────────────────────────────────────────────────────────────
+
+docker-build:  ## Build the Docker image
+	docker compose build
+
+docker-up:  ## Start services in detached mode
+	docker compose up -d
+
+docker-down:  ## Stop and remove containers
+	docker compose down
+
+# ── Cleanup ────────────────────────────────────────────────────────────────────
+
+clean:  ## Remove build artifacts and cache
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	find . -type d -name ".ruff_cache" -exec rm -rf {} +
+	find . -type d -name "*.egg-info" -exec rm -rf {} +
+	find . -type d -name "dist" -exec rm -rf {} +
+	find . -type d -name "build" -exec rm -rf {} +
+	find . -name "*.pyc" -delete
+	find . -name ".coverage" -delete

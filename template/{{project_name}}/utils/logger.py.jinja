@@ -1,0 +1,88 @@
+"""
+Shared logger for {{ project_name }}.
+
+Loads logging config from configs/logging.yaml when available,
+falling back to a sensible default setup.
+
+Usage:
+    from {{ project_name }}.utils.logger import get_logger
+
+    logger = get_logger(__name__)
+    logger.info("Starting process")
+    logger.debug("Debug details: %s", some_var)
+"""
+
+import logging
+import logging.config
+import sys
+from datetime import datetime as dt
+from pathlib import Path
+
+import yaml
+
+_LOG_DIR = Path("logs")
+_LOG_CONFIG = Path("configs/logging.yaml")
+_LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d - %(message)s"
+_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+_configured = False
+
+
+def _configure_from_yaml() -> bool:
+    """Load logging config from configs/logging.yaml. Returns True on success."""
+    if not _LOG_CONFIG.exists():
+        return False
+    try:
+        _LOG_DIR.mkdir(exist_ok=True)
+        with _LOG_CONFIG.open() as f:
+            config = yaml.safe_load(f)
+        logging.config.dictConfig(config)
+        return True
+    except Exception:
+        return False
+
+
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """Return a configured logger.
+
+    Loads configs/logging.yaml on first call if available.
+    Falls back to console + dated file handler if not.
+
+    Args:
+        name:  Logger name — pass __name__ from the calling module.
+        level: Logging level used only in fallback mode (default: INFO).
+
+    Returns:
+        Configured Logger instance.
+    """
+    global _configured
+
+    if not _configured:
+        _configured = _configure_from_yaml()
+
+    logger = logging.getLogger(name)
+
+    # If YAML config was loaded, logger is already set up
+    if _configured:
+        return logger
+
+    # Fallback: manual setup if YAML not found
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(level)
+    formatter = logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    _LOG_DIR.mkdir(exist_ok=True)
+    log_file = _LOG_DIR / f"{name.replace('.', '_')}_{dt.now().strftime('%Y-%m-%d')}.log"
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    logger.propagate = False
+
+    return logger
