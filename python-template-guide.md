@@ -616,10 +616,10 @@ The other entries are for debugging specific modules:
 
 ```json
 {
-  "name": "Debug pipeline module",
+  "name": "Debug x module",
   "type": "debugpy",
   "request": "launch",
-  "module": "my_project.pipeline.run_pipeline",  // python -m equivalent
+  "module": "<x> file",  // python -m equivalent
   "cwd": "${workspaceFolder}",  // runs from the project root
   "justMyCode": false
 }

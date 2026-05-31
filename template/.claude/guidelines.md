@@ -1,33 +1,6 @@
-# CLAUDE.md
+# Guidelines
 
-This file provides context to Claude about this project. Fill in each section as the project evolves.
-
-## Project overview
-
-<!-- What does this project do? What problem does it solve? -->
-
-## Architecture
-
-<!-- High-level structure: main modules, how data flows, key design decisions -->
-
-## Stack & tools
-
-- Python {{ python_version }}+
-- uv (dependency management)
-- Ruff (lint + format) + pre-commit
-- pytest (testing)
-- dvc (pipeline management)
-- docker and docker-compose for container creation
-- <!-- add more: FastAPI, MLflow, etc. -->
-
-## Common commands
-
-```bash
-make install     # install dependencies
-make test        # run tests
-make lint        # lint with ruff
-make format      # format with ruff
-```
+(Duplicated guidelines from Claude.md)
 
 ## General guidelines
 
@@ -130,7 +103,3 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | Simplicity First | Strategy pattern for single discount calculation | One function until complexity is actually needed |
 | Surgical Changes | Reformats quotes, adds type hints while fixing bug | Only change lines that fix the reported issue |
 | Goal-Driven | "I'll review and improve the code" | "Write test for bug X → make it pass → verify no regressions" |
-
-## Out of scope
-
-<!-- What this project deliberately does NOT do -->

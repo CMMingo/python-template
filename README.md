@@ -131,6 +131,9 @@ python-template/
     ├── .vscode/
     │   └── launch.json.jinja
     ├── .claude/
+    │   ├── skills/
+    │   ├── guidelines_verbose.md
+    │   ├── guidelines.md
     │   └── settings.json
     ├── pyproject.toml.jinja
     ├── Makefile.jinja
