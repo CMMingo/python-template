@@ -2,7 +2,7 @@ PROJECT_NAME := {{ project_name }}
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup install test test-fast lint format fix pre-commit docs clean \
+.PHONY: help setup install test test-fast lint typecheck format fix pre-commit docs clean \
         dvc-pull dvc-push dvc-repro docker-build docker-up docker-down
 
 help:  ## Show this help message
@@ -10,7 +10,7 @@ help:  ## Show this help message
 
 # ── Environment ────────────────────────────────────────────────────────────────
 
-setup:  ## Bootstrap a fresh clone (install uv, deps, pre-commit, DVC, .env)
+setup:  ## Bootstrap a fresh clone (install uv, deps, pre-commit, DVC, .env, graphify/rtk)
 	bash scripts/setup.sh
 
 install:  ## Install dependencies and pre-commit hooks
@@ -27,6 +27,9 @@ test-fast:  ## Run tests without coverage
 
 lint:  ## Lint with Ruff
 	uv run ruff check .
+
+typecheck:  ## Type-check with ty
+	uv run ty check .
 
 format:  ## Format with Ruff
 	uv run ruff format .

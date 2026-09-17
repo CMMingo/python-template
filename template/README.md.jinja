@@ -9,6 +9,8 @@
 - [uv](https://docs.astral.sh/uv/) — dependency management
 - [Docker](https://docs.docker.com/get-docker/) *(optional)* — containerised runs
 - [DVC](https://dvc.org/) *(optional)* — data and pipeline versioning (installed as dev dependency)
+- [graphify](https://github.com/Graphify-Labs/graphify) *(optional)* — codebase knowledge graph for AI assistants (auto-installed by `setup.sh`, best-effort)
+- [rtk](https://github.com/rtk-ai/rtk) *(optional)* — filters/compresses command output before it reaches an agent's context (auto-installed by `setup.sh`, best-effort)
 
 ---
 
@@ -19,7 +21,7 @@ bash scripts/setup.sh
 source .venv/bin/activate
 ```
 
-`setup.sh` will: install uv if missing, sync dependencies, install pre-commit hooks, initialise DVC, and create `.env` from `.env.example`.
+`setup.sh` will: install uv if missing, sync dependencies, install pre-commit hooks, initialise DVC, create `.env` from `.env.example`, and best-effort install `graphify` and `rtk` (warns and continues if either fails -- they're conveniences, not hard requirements).
 
 ---
 
@@ -45,10 +47,13 @@ source .venv/bin/activate
 │   └── artifacts/              # model checkpoints, outputs (DVC-tracked)
 ├── results/                    # evaluation outputs, plots (gitignored)
 ├── logs/                       # runtime logs (gitignored)
-├── front/                      # frontend code
-│   ├── src/
-│   └── public/
-├── docs/                       # generated docs (gitignored)
+├── frontend/                   # frontend code (occasional -- see the frontend-design skill)
+│   └── src/
+├── infra/                      # infrastructure as code (occasional)
+├── docs/
+│   ├── specs/                   # per-spec folders: SPEC.md, plan/, reports/ (committed -- see /spec)
+│   ├── adr/                     # architecture decision records (committed -- see domain-modeling)
+│   └── build/                   # generated API docs from `make docs` (gitignored)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── dvc.yaml                    # DVC pipeline definition
@@ -60,13 +65,28 @@ source .venv/bin/activate
 
 ---
 
+## Docs
+
+This project keeps three different kinds of documentation, each with its own purpose, scope, and lifecycle -- don't mix them up.
+
+| Location | What it holds | Scope | Written by |
+|---|---|---|---|
+| `CONTEXT.md` | Project glossary -- resolved terminology only, no implementation details. | Project-wide (or one per bounded context, via `CONTEXT-MAP.md`); reused across every spec. | `domain-modeling` / `grill-with-docs` |
+| `docs/adr/` | Architecture decision records -- hard-to-reverse, non-obvious decisions with a real trade-off behind them. | Project-wide, same lifecycle as `CONTEXT.md`. | `domain-modeling` |
+| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per spec (`<type>` is `feat`, `fix`, or `refactor`): `SPEC.md` (problem, solution, decisions), `plan/PLAN.md` (a seam-organized task breakdown), and `reports/` (one numbered file per `implement`/`debugger` run against it, e.g. `0001-implement.md`). | Per spec -- that piece of work's own task list and execution history, not shared with any other spec. | `/spec`, `implement`, `debugger` |
+| `docs/build/` | Generated API docs (gitignored). | Rebuilt on demand. | `pdoc`, via `make docs` |
+
+See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full spec-to-implementation workflow, and [.claude/skills/domain-modeling/SKILL.md](.claude/skills/domain-modeling/SKILL.md) for how `CONTEXT.md` and ADRs get built and maintained.
+
+---
+
 ## Commands
 
 ### Environment
 
 | Command | Description |
 |---|---|
-| `make setup` | Bootstrap a fresh clone — installs uv, deps, pre-commit hooks, initialises DVC, creates `.env` |
+| `make setup` | Bootstrap a fresh clone — installs uv, deps, pre-commit hooks, initialises DVC, creates `.env`, best-effort installs `graphify`/`rtk` |
 | `make install` | Install dependencies and pre-commit hooks (assumes uv is already installed) |
 
 ### Code quality
@@ -76,6 +96,7 @@ source .venv/bin/activate
 | `make test` | Run tests with coverage report |
 | `make test-fast` | Run tests without coverage |
 | `make lint` | Lint with Ruff |
+| `make typecheck` | Type-check with ty |
 | `make format` | Format with Ruff |
 | `make fix` | Lint, auto-fix, and format in one step |
 | `make pre-commit` | Run all pre-commit hooks on every file |

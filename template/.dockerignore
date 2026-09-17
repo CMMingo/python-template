@@ -51,7 +51,7 @@ runs/
 results/
 
 # Frontend (build separately)
-front/
+frontend/
 
 # Docs & meta
 docs/

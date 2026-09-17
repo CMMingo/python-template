@@ -70,7 +70,7 @@ The single most important file in a modern Python project. It is the standardise
 name = "my_project"
 version = "0.1.0"
 description = "..."
-authors = ...
+# authors = [{ name = "Your Name", email = "you@example.com" }]
 requires-python = ">=3.12"
 readme = "README.md"
 license = { text = "MIT" }
@@ -81,6 +81,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "ruff",          # linting and formatting
+  "ty",            # type checking (Astral's fast type checker)
   "pre-commit",    # git hook runner
   "pytest",        # test framework
   "pytest-cov",    # coverage reporting for pytest
@@ -128,11 +129,24 @@ addopts = "--cov=my_project --cov-report=term-missing"
 
 Pytest configuration. `testpaths` tells pytest where to look for tests. `addopts` are flags automatically passed on every run — here, they enable coverage measurement for your package and print a terminal report showing which lines are not covered.
 
+`ty` needs no configuration block — `uv run ty check .` (wrapped as `make typecheck`) picks up `requires-python` and the package layout from `[project]` directly.
+
 ---
 
 ### `README.md`
 
-The project's front page, shown on GitHub and in documentation. Already written as a template — it documents the project structure, all `make` commands in tables, configuration, logging, and CI/CD. Fill in the description and update it as the project grows.
+The project's front page, shown on GitHub and in documentation. Already written as a template — it documents the requirements (including the optional `graphify` and `rtk` agent-support tools), the project structure, all `make` commands in tables, configuration, logging, and CI/CD.
+
+It also has a **Docs** section that spells out the three kinds of documentation a generated project keeps, because the AI workflow writes to all of them and they're easy to confuse:
+
+| Location | What it holds | Written by |
+|---|---|---|
+| `CONTEXT.md` | Project glossary — resolved terminology only | `domain-modeling` / `grill-with-docs` |
+| `docs/adr/` | Architecture decision records — hard-to-reverse decisions with a real trade-off | `domain-modeling` |
+| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per piece of work: `SPEC.md`, `plan/PLAN.md`, `reports/` | `/spec`, `implement`, `debugger` |
+| `docs/build/` | Generated API docs (gitignored) | `pdoc` via `make docs` |
+
+Fill in the description and update it as the project grows — or let the `readme-updater` subagent do it as part of `/commit-push` (see [`.claude/`](#claude)).
 
 ---
 
@@ -147,24 +161,32 @@ A human-readable log of notable changes across versions. Follows the [Keep a Cha
 ### Fixed
 ```
 
-The `[Unreleased]` section collects changes that haven't been released yet. When you cut a release, you rename it to `[1.0.0] - <date>` and open a new `[Unreleased]` section above it. This is particularly useful when working with AI agents: they can update this file as part of a PR, giving you a running record of what changed and why.
+The `[Unreleased]` section collects changes that haven't been released yet. When you cut a release, you rename it to `[1.0.0] - <date>` and open a new `[Unreleased]` section above it. In this template the `changelog-writer` subagent owns this file: `/commit-push` dispatches it before every commit so the entry lands in the same commit as the code it describes, and it can cut a release section when asked. It is append-only history — it never touches `README.md` (that's `readme-updater`'s job).
 
 ---
 
 ### `CLAUDE.md`
 
-A file specifically for AI coding assistants. When Claude (or another AI tool) opens your project, it reads this file first to understand the context it's operating in. Think of it as a brief for a new team member who reads extremely fast.
+A file specifically for AI coding assistants. When Claude Code opens your project, it reads this file first to understand the context it's operating in. Think of it as a brief for a new team member who reads extremely fast.
 
 ```markdown
-## Project overview
-## Architecture
-## Stack & tools
-## Common commands
-## Key conventions
-## Out of scope
+## Project overview          ← fill in
+## Architecture              ← fill in
+## Stack & tools             ← pre-filled: Python, uv, Ruff, ty, pytest, dvc, docker
+## Common commands           ← pre-filled: make install / test / lint / typecheck / format
+## Development workflow      ← pre-filled: how the skills, subagents and hooks compose
+## General guidelines        ← pre-filled: dev philosophy, tooling rules, constraints
+## Behavioral guidelines     ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
+## Out of scope              ← fill in
 ```
 
-Fill this in as the project evolves. The more accurate and detailed it is, the better an AI agent will perform on tasks in this codebase — it won't suggest patterns that don't fit, won't touch things marked out of scope, and will use the right commands.
+The first two and the last section are yours to fill in as the project evolves. The rest ships ready:
+
+- **Development workflow** is the map of the whole AI-native process — clarify (`/grill-with-docs`) → spec (`/spec`) → implement (`implement`, `tdd`, `logic-checker`, `code-reviewer`) → docs + commit (`/commit-push`) → PR by hand — plus the separate debugging track (`diagnosing-bugs` → `debugger`) and the two hooks that run under everything. It is deliberately a map, not a recipe: each piece triggers on its own (user-invoked, model-invoked, or hook-enforced). Read it once and you know how everything under `.claude/` fits together.
+- **General guidelines** encode the coding philosophy the agent should follow: small functions, flat over nested, explicit over implicit, no premature abstraction, comments only for non-obvious *why*, always use scaffolding/package-manager commands instead of hand-writing config, imports at the top, hard timeouts on external processes, never commit secrets, and "type checker and linter are gates, not suggestions".
+- **Behavioral guidelines** are the four rules of engagement — *Think Before Coding* (surface assumptions, ask when unclear), *Simplicity First* (no speculative features or abstractions), *Surgical Changes* (touch only what the request needs), *Goal-Driven Execution* (turn tasks into verifiable criteria and loop until they pass) — with an anti-patterns table.
+
+The more accurate the fill-in sections are, the better an agent performs — it won't suggest patterns that don't fit, won't touch things marked out of scope, and will use the right commands.
 
 ---
 
@@ -181,6 +203,8 @@ Key targets:
 - **`make setup`** — calls `scripts/setup.sh`. Use this on a fresh clone.
 - **`make install`** — just `uv sync + pre-commit install`. Use this when uv is already set up and you just pulled changes.
 - **`make fix`** — the most useful day-to-day command: runs `ruff check --fix` (auto-fixes lint issues) then `ruff format` (formats code). Run before committing.
+- **`make test`** — runs pytest with coverage. This is also what the `test_gate.py` hook and the local pre-commit hook run before allowing a commit (see [`.pre-commit-config.yaml`](#pre-commit-configyaml) and [`.claude/hooks/`](#claudehooks)).
+- **`make typecheck`** — runs `ty check .`. CI runs the same thing, and `CLAUDE.md` tells the agent to treat it as a gate, not a suggestion.
 - **`make docs` / `make docs-serve`** — generates HTML documentation from your docstrings using `pdoc`. `uv run --with pdoc` fetches pdoc on-demand without adding it as a permanent dependency.
 - **`make dvc-repro`** — re-runs any DVC pipeline stages whose dependencies have changed.
 - **`make clean`** — deletes compiled Python files, test caches, build artifacts. Useful when things behave strangely.
@@ -267,11 +291,11 @@ Tells Git which files and folders to never track. Key sections:
 
 - **Python artifacts** — `__pycache__/`, `.pyc` files, `dist/`, `build/`, `.egg-info/` — these are generated files that change constantly and should never be committed.
 - **Virtual environments** — `.venv/` — the installed packages live here; anyone can recreate this by running `uv sync`.
-- **Runtime outputs** — `logs/*`, `data/*`, `runs/*`, `results/*` — contents are gitignored but the folders themselves are tracked via `.gitkeep` files, so the folder structure is preserved in the repo without committing the actual data.
+- **Runtime outputs** — `logs/*`, `data/*`, `runs/mlruns/*`, `runs/artifacts/*`, `results/*` — contents are gitignored but the folders themselves are tracked via `.gitkeep` files, so the folder structure is preserved in the repo without committing the actual data.
 - **`.env`** — never commit secrets.
 - **`configs/config.local.yaml`** — local config overrides with environment-specific paths or secrets.
-- **`docs/build/`** — generated documentation.
-- **Frontend build artifacts** — `node_modules/`, `.next/`, `dist/`.
+- **`docs/build/`** — generated API documentation. Note that only `build/` is ignored: `docs/specs/` and `docs/adr/` are committed on purpose, since they're the written record the AI workflow produces.
+- **Frontend build artifacts** — `frontend/node_modules/`, `frontend/.next/`, `frontend/dist/`, `frontend/.env.local`.
 
 The pattern `folder/*` + `!folder/.gitkeep` is how you track an empty folder in Git (which normally ignores empty directories). The `.gitkeep` file has no content — it's just a placeholder.
 
@@ -299,9 +323,27 @@ repos:
       - id: check-toml             # validates TOML syntax
       - id: check-merge-conflict   # catches unresolved merge conflict markers
       - id: debug-statements       # catches forgotten breakpoint() or pdb calls
+
+  - repo: local
+    hooks:
+      - id: make-test
+        name: Run test suite (make test)
+        entry: make test
+        language: system
+        pass_filenames: false     # run the whole suite, not per-file
+        always_run: true          # even if no Python files are staged
 ```
 
-Each hook is pinned to a specific version (`rev`) for reproducibility. The hooks run against only the files you've staged for commit (not the whole repo), so they're fast. After running `make install`, these hooks are registered in `.git/hooks/pre-commit` and run automatically — you don't have to remember to run `make fix` manually.
+Each remote hook is pinned to a specific version (`rev`) for reproducibility, and runs against only the files you've staged for commit (not the whole repo), so they're fast. After running `make install`, these hooks are registered in `.git/hooks/pre-commit` and run automatically — you don't have to remember to run `make fix` manually.
+
+The `local` `make-test` hook is different: it runs the full test suite on every commit. This is the **human** copy of the test gate. There are deliberately two:
+
+| Gate | Who it guards | Bypassable? |
+|---|---|---|
+| `.pre-commit-config.yaml` → `make-test` | You, committing by hand | Yes — `git commit --no-verify` or `SKIP=make-test git commit` when you have a real reason |
+| `.claude/hooks/test_gate.py` | The agent, committing through Claude Code | No — fires before Bash even runs, so `--no-verify` never comes into play |
+
+Having the same rule in two places means a green test suite is a precondition for a commit no matter who is typing, while still leaving you an escape hatch the agent doesn't get.
 
 ---
 
@@ -415,7 +457,11 @@ This folder becomes your importable Python package. Its name is set by the `proj
 
 ### `{{project_name}}/__init__.py`
 
-The file that makes a directory a Python package. Currently just sets `__version__`. You can also use it to expose the package's public API by importing from submodules here.
+The file that makes a directory a Python package. Rendered from `__init__.py.jinja`: the module docstring is your `description` answer, and it sets `__version__ = "0.1.0"` (which `tests/test_sample.py` asserts against). You can also use it to expose the package's public API by importing from submodules here.
+
+### `{{project_name}}/constants.py`
+
+An empty module (docstring only) reserved for project-wide constants — paths, magic numbers, enum-like values. Keeping them in one place stops them from being redefined across modules, and gives agents an obvious spot to look before inventing a new one.
 
 ### `{{project_name}}/utils/__init__.py`
 
@@ -497,6 +543,19 @@ fi
 
 `dvc init` creates the `.dvc/` directory and adds some files to `.gitignore`. It only needs to run once per project, so this check prevents re-running it on `make setup`.
 
+```bash
+# ── 6. Optional tooling (graphify, rtk) ──
+(uv tool install graphify && graphify install) || warn "graphify install failed -- ..."
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/.../install.sh | sh || warn "rtk install failed -- ..."
+```
+
+The last step installs two optional tools that make AI agents work better in the repo, and is deliberately **best-effort** — each install is wrapped in `|| warn ...` so a failure prints a warning and the script keeps going instead of aborting under `set -e`:
+
+- [**graphify**](https://github.com/Graphify-Labs/graphify) builds a knowledge graph of the codebase that assistants can query for structure instead of grepping.
+- [**rtk**](https://github.com/rtk-ai/rtk) filters and compresses command output before it reaches an agent's context window, so long `pytest` or `git log` output doesn't burn tokens. The install path is OS-dependent: `brew` on macOS (falling back to the install script), the install script on Linux, `winget` on Windows (Git Bash / MSYS), and a skip-with-warning anywhere else.
+
+Neither is a dependency of the project — they're conveniences for the person (or agent) driving it.
+
 The coloured output (`GREEN`, `YELLOW`, `RED`) is purely cosmetic but makes it much easier to follow what the script is doing.
 
 ---
@@ -526,11 +585,14 @@ steps:
   - name: Check formatting
     run: uv run ruff format --check .  # fails if code isn't formatted (doesn't modify)
 
+  - name: Type-check with ty
+    run: uv run ty check .             # fails on type errors
+
   - name: Run tests
     run: uv run pytest                 # runs the test suite with coverage
 ```
 
-If any step fails, GitHub marks the commit/PR as failed and (optionally) blocks merging. This is the safety net that catches issues before they land on `main`.
+If any step fails, GitHub marks the commit/PR as failed and (optionally) blocks merging. This is the safety net that catches issues before they land on `main`. The four checks are exactly `make lint`, `make format` (in check mode), `make typecheck`, and `make test` — the same commands the agent runs throughout `implement`, so a PR that was built through the workflow should arrive green.
 
 ---
 
@@ -596,54 +658,129 @@ The most agent-oriented template. Designed for concrete, bounded units of work:
 
 ---
 
-## `.vscode/`
-
-### `.vscode/launch.json`
-
-Configures the VS Code debugger. Each entry in `configurations` appears as a named option in the Run & Debug panel.
-
-```json
-{
-  "name": "Python Debugger: Current File",
-  "type": "debugpy",
-  "request": "launch",
-  "program": "${file}",         // runs whatever file is currently open
-  "justMyCode": false           // steps into library code, not just yours
-}
-```
-
-The other entries are for debugging specific modules:
-
-```json
-{
-  "name": "Debug x module",
-  "type": "debugpy",
-  "request": "launch",
-  "module": "<x> file",  // python -m equivalent
-  "cwd": "${workspaceFolder}",  // runs from the project root
-  "justMyCode": false
-}
-```
-
-Using `"module"` instead of `"program"` is equivalent to running `python -m my_project.pipeline.run_pipeline` from the terminal — it respects Python's package system properly. These are placeholders; update them to match your actual module structure.
-
----
-
 ## `.claude/`
 
-### `.claude/settings.json`
+Everything under `.claude/` is what makes a generated project *AI-native* rather than merely AI-friendly. `CLAUDE.md` tells the agent what the project is; this folder gives it a process to follow, specialists to delegate to, and guardrails it can't switch off.
 
-Tells Claude Code (the CLI tool) which files to prioritise for project context.
+```
+.claude/
+├── settings.json        ← context file + PreToolUse hooks
+├── hooks/               ← two Python scripts Claude Code runs before every Bash call
+├── agents/              ← 7 subagent definitions (+ README roster)
+└── skills/              ← 13 engineering skills + 9 productivity skills (+ README rosters)
+```
+
+The pieces compose as described in `CLAUDE.md`'s **Development workflow** section. In one line: `/grill-with-docs` → `/spec` → `implement` (`tdd` + `logic-checker` + `code-reviewer`) → `/commit-push` (`changelog-writer` + `readme-updater` + `commit-push`) → PR by hand, with `diagnosing-bugs` → `debugger` as the separate track for things that are already broken, and the two hooks underneath all of it.
+
+### `.claude/settings.json`
 
 ```json
 {
   "context": {
     "files": ["CLAUDE.md"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/destructive_guard.py" },
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/test_gate.py" }
+        ]
+      }
+    ]
   }
 }
 ```
 
-When Claude Code starts a session in your project, it reads `CLAUDE.md` first. This is the bridge between the `.claude/` folder and the `CLAUDE.md` file — the settings tell Claude Code where to find the project brief.
+`context.files` tells Claude Code to read `CLAUDE.md` first when it starts a session. The `hooks` block registers two `PreToolUse` hooks that fire on every `Bash` tool call: Claude Code pipes the pending call as JSON to each script's stdin, and a script that exits with code 2 blocks the call (its stderr is shown to the agent as the reason). Both are invoked with `python3`, so it needs to be on the PATH of the shell Claude Code runs in.
+
+### `.claude/hooks/`
+
+Both hooks share a philosophy: **they guard the agent, not you**, so neither has an override. If you need to do one of these things yourself, do it outside Claude Code.
+
+**`test_gate.py`** — blocks any Bash call containing `git commit` unless `make test` passes first. It matches the command string with a regex (`git ... commit`, including `git -C path commit` and chained `&& git commit`) and deliberately ignores whatever flags follow, so `--no-verify` doesn't help — the hook runs before Bash ever sees the command. Tests run with a 10-minute timeout. Infrastructure problems (no `Makefile`, no `make` or `uv` on PATH, malformed hook input) **fail open** with a warning rather than blocking on something the agent can't fix by writing code.
+
+**`destructive_guard.py`** — blocks a short list of obviously destructive commands:
+
+- `rm -rf` (any equivalent flag combination) targeting `/`, `~`, `.`, `..`, `*`, `$HOME`, `.git`, the project root, or an ancestor of it
+- `git reset --hard`
+- `git clean` with a force flag
+- `git checkout .` / `git restore .` (discards every uncommitted change)
+- `git branch -D main|master`
+- `git push --force` / `-f` to `main` or `master` (branch resolved from the explicit refspec, else the current branch)
+
+It splits on `&&`, `||`, `;`, `|` to inspect each command in a chain and tokenizes with `shlex`. It's a heuristic safety net for the common careless case, not a shell parser — unusual quoting can slip past it.
+
+### `.claude/agents/`
+
+Subagents are independent Claude contexts the main agent dispatches for a specific job. Each is a Markdown file whose frontmatter sets the model, reasoning effort, and allowed tools; the body is the brief. Using a separate context keeps the main conversation lean and — for the read-only ones — makes them safe to run without touching the working tree. `agents/README.md` is the roster; the summary:
+
+| Agent | Model / effort | Tools | Job |
+|---|---|---|---|
+| `context-scout` | haiku / medium | read-only | Fact-finding in the repo (code, docs, ADRs, git history). Dispatched by `grilling` and anything that delegates to it whenever a question needs a fact instead of a decision. |
+| `code-reviewer` | sonnet / high | read-only | Fresh-eyes review of a diff for correctness, security, seam discipline, and fit with `CLAUDE.md`/`CONTEXT.md`/ADRs. Reports, doesn't fix. Runs at the end of `implement` and `debugger`. |
+| `logic-checker` | sonnet / high | read-only | Per-seam check that the implementation matches the spec's *Implementation Decisions* and nothing is missing that the seam's own test wouldn't catch. Runs before that seam's test confirms green. Narrower and earlier than `code-reviewer`. |
+| `changelog-writer` | sonnet / low | edit | Updates `CHANGELOG.md`'s `[Unreleased]` from recent commits; cuts a release section when asked. History only. |
+| `readme-updater` | sonnet / low | edit | Keeps `README.md` and other top-level docs (skills READMEs, etc.) accurate and lean — deletes stale content as readily as it adds. Current-state only. |
+| `commit-push` | haiku / low | Bash | Stages, drafts commit message(s) from the diff, commits (split into logical commits when large), pushes once. Only ever triggered by the `/commit-push` skill. Never opens a PR. |
+| `debugger` | opus / high | edit + run | Structured diagnosis loop — repro, minimise, rank hypotheses, instrument, fix with a regression test — up to two rounds before writing up what was tried. Dispatched by `diagnosing-bugs`, one confirmed symptom at a time. Stops short of committing. |
+
+The model-tier choices are deliberate: cheap models for mechanical work (`context-scout`, `commit-push`), stronger ones with high effort for judgement (`code-reviewer`, `logic-checker`), and the strongest with a skeptical brief for debugging, where anchoring on the first plausible cause is the failure mode.
+
+The two hooks apply to subagents exactly as they apply to the main agent — `commit-push` can't commit past a red test suite either.
+
+### `.claude/skills/`
+
+A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional `references/` or `scripts/`. Skills come in two flavours, decided by `disable-model-invocation` in the frontmatter:
+
+- **User-invoked** (`disable-model-invocation: true`) — only run when you type `/<name>`. These are the deliberate, side-effectful steps.
+- **Model-invoked** — the agent reaches for them itself when the situation matches their description. These are techniques and reference material.
+
+`skills/README.md` is the roster. The engineering skills:
+
+| Skill | Invoked by | What it does |
+|---|---|---|
+| `spec` | you (`/spec`) | Turns a feature request into `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md` plus a seam-organized `plan/PLAN.md`, after a bounded round of clarifying questions and a seam check. Creates the matching `feat/`, `fix/`, or `refactor/` branch. Continues straight into `implement` by default. |
+| `implement` | you (`/implement`, or via `/spec`) | Works through the plan seam by seam: `tdd` at each seam, `logic-checker` before each seam's test confirms green, `make test`/`lint`/`typecheck` throughout, `plan/PLAN.md` checked off, a report per seam into the spec's `reports/`. Ends with an optional refactor pass and an independent `code-reviewer` pass. Never pauses for confirmation; never commits. |
+| `tdd` | model | Red-green test-driven development, one seam at a time — what a good test looks like, mocking at boundaries only, plus ML-specific rules (tolerance-based float assertions, checked-in fixtures, seeding, flaky-test handling). |
+| `diagnosing-bugs` | model | Triages a bug report or a half-built feature into confirmed bugs (→ `debugger`, one at a time) vs. pieces that were never built (→ `/spec` + `implement`), then dispatches. Includes a `scripts/hitl-loop.template.sh` for human-in-the-loop repro loops. |
+| `grilling` | model | The interview engine: questions the user relentlessly about a plan until nothing is silently assumed. Backs `grill-me` and `grill-with-docs`; dispatches `context-scout` when a question needs a fact. |
+| `grill-with-docs` | you (`/grill-with-docs`) | `grilling`, grounded in this repo — writes resolved vocabulary to `CONTEXT.md` and hard decisions to `docs/adr/` as it goes (via `domain-modeling`). |
+| `domain-modeling` | model | Builds and sharpens the project glossary (`CONTEXT.md`, or one per bounded context with a `CONTEXT-MAP.md`) and records ADRs. Ships `references/CONTEXT-FORMAT.md` and `references/ADR-FORMAT.md` as the canonical formats. Also fires on its own when terminology gets sloppy. |
+| `commit-push` | you (`/commit-push`) | Dispatches `changelog-writer` and `readme-updater`, then the `commit-push` subagent. The only way a commit happens in the workflow. |
+| `claude-handoff` | you (`/claude-handoff`) | Hands the conversation to a detached background Claude Code agent that keeps working unattended — use instead of same-session `implement` when you want to walk away. Hooks still apply. |
+| `walkthrough` | you (`/walkthrough`) | Debugger-style tour of one concrete code path — a screen per step, one real value carried forward as it transforms. For understanding existing code. `references/example.md` shows the format. |
+| `doubt` | you (`/doubt`, `/x`) | Re-examines something the agent just did or claimed with structured skepticism. Ends in one of three verdicts — wrong, right, or genuine tradeoffs — never "it depends". |
+| `handcraft` | you (`/handcraft`) | Builds a feature one function at a time with you approving each step — the opposite end of the spectrum from `implement`. `scripts/executable_preflight.py` checks a target is runnable before starting. |
+| `frontend-design` | model | Aesthetic and UX guidance for the occasional UI work in `frontend/` — deliberate choices on palette, typography, layout. Self-contained: dispatches its own `code-reviewer` (and `logic-checker` if implementing a spec'd seam). |
+
+### `.claude/skills/productivity_skills/`
+
+General workflow tools that aren't code-specific, with their own `README.md` roster. All are user-invoked except `writing-for-agents`.
+
+| Skill | What it does |
+|---|---|
+| `grill-me` | `grilling` with no repo and nothing written to disk — pure interview to sharpen a loose idea. |
+| `handoff` | Compacts the current conversation into a handoff document another agent can pick up (a document, unlike `claude-handoff`, which spawns a process). |
+| `teach` | Multi-session teaching of a skill or concept, using the current directory as a stateful workspace. `references/` define the mission, learning-record, glossary, and resources formats. |
+| `lbt` | Learning-by-teaching loop — you explain something, get told what's correct/wrong/conflated/missing, and explain again. |
+| `mvk` | Minimal Viable Knowledge — researches any field to "level-1 enthusiast lurker" depth and delivers an interactive HTML mini-site. |
+| `rp` | Roleplay QA — a context-free subagent plays a blind end user against the real product (UI/CLI/API only, no source) to find where users get stuck. `references/actor-brief.md` is the brief it's given. |
+| `to-questionnaire` | Turns a decision you can't answer alone into a Markdown questionnaire for the one person who can. |
+| `wait-what` | Fire when a message doesn't land — the agent re-pitches it in plain English using your `CONTEXT.md` vocabulary. |
+| `writing-for-agents` | (model-invoked) How to write documents for agents: skills, `AGENTS.md`/`CLAUDE.md`, and anything an agent reaches by a pointer. `references/SKILL-MECHANICS.md` covers how skills load and trigger. Use it when adding your own skills to the project. |
+
+### Where the workflow writes
+
+The skills produce durable artefacts outside `.claude/`, all committed:
+
+- `CONTEXT.md` (project root) — the glossary. Resolved terminology only, no implementation details.
+- `docs/adr/` — one file per architecture decision record.
+- `docs/specs/<type>-<yyyy_mm>-<name>/` — `SPEC.md`, `plan/PLAN.md`, and `reports/NNNN-<implement|debugger>.md`, one folder per piece of work.
+- `CHANGELOG.md` and `README.md` — kept current by `changelog-writer` and `readme-updater` on every `/commit-push`.
+
+None of these exist in a fresh project; `docs/` ships as an empty `.gitkeep` folder and the skills create the subfolders on first use.
 
 ---
 
@@ -654,23 +791,26 @@ Like `.gitignore` but for Docker builds. When Docker copies files into the build
 Key exclusions:
 - `.git/` — the entire git history has no place in an image
 - `data/`, `logs/`, `runs/`, `results/` — mount these as volumes instead
-- `notebooks/`, `front/` — built and served separately
-- `.github/`, `.pre-commit-config.yaml`, `.vscode/` — dev tooling irrelevant in production
-- `*.md` files — documentation doesn't belong in a runtime image
+- `notebooks/`, `frontend/` — built and served separately
+- `.github/`, `.pre-commit-config.yaml`, `.vscode/`, `.idea/` — dev tooling irrelevant in production
+- `docs/`, `*.md` files — documentation (specs, ADRs, generated API docs, `CLAUDE.md`) doesn't belong in a runtime image
+- `.dvc/`, `dvc.yaml` — pipeline definition is a dev-time concern
+
+`.claude/` is not excluded explicitly but every file in it is either `.md` (caught by `*.md`), `.json`, or `.py` under a folder the runtime never imports — harmless, but add `.claude/` here if you want a strictly minimal context.
 
 ---
 
 ## Folder-only entries (`.gitkeep` files)
 
-These folders contain only a `.gitkeep` file — an empty placeholder that allows Git to track the folder without any real content. Git doesn't track empty directories, so `.gitkeep` is the convention for "this folder should exist in the repo but its contents are gitignored."
+These folders contain only a `.gitkeep` file — an empty placeholder that allows Git to track the folder without any real content. Git doesn't track empty directories, so `.gitkeep` is the convention for "this folder should exist in the repo but its contents are gitignored (or created later)."
 
 | Folder | Purpose |
 |---|---|
-| `data/raw/` | Original source data. Treat as immutable — never modify raw data. |
-| `data/processed/` | Cleaned, transformed data ready for training. Regenerated by the `prepare` DVC stage. |
+| `data/` | Source and processed data. Contents gitignored, DVC-tracked. Conventionally split into `raw/` (immutable) and `processed/` (regenerated by the `prepare` DVC stage) — create the subfolders when you set up your pipeline; `dvc.yaml` already references them. |
+| `docs/` | Written record of the project. `specs/` and `adr/` are created by the AI workflow and committed; `build/` is generated by `make docs` and gitignored. |
 | `notebooks/` | Jupyter notebooks for exploration and analysis. Not used in the pipeline. |
-| `front/src/` | Frontend source code (components, pages, styles). |
-| `front/public/` | Static assets served directly (images, fonts, icons). |
+| `frontend/src/` | Frontend source code (components, pages, styles). Occasional — the `frontend-design` skill covers the aesthetic side when you get there. |
+| `infra/` | Infrastructure as code — Terraform, Pulumi, Kubernetes manifests, and the like. Occasional. |
 | `logs/` | Runtime log files written by the logger. Rotated automatically. |
 | `runs/mlruns/` | MLflow experiment tracking data — metrics, parameters, run metadata. |
 | `runs/artifacts/` | Trained model files, checkpoints, outputs produced by pipeline stages. |
@@ -683,14 +823,20 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 
 | File | How often | When |
 |---|---|---|
-| `CLAUDE.md` | Frequently | Every time the project architecture changes |
-| `CHANGELOG.md` | Per PR | Whenever something user-facing changes |
+| `CLAUDE.md` | Frequently | Every time the project architecture or conventions change — keep it current so the agent stays effective |
+| `CONTEXT.md` | Frequently, via the skills | Whenever terminology gets settled (`/grill-with-docs`, `domain-modeling`) |
+| `docs/specs/` | Per feature / fix | Created by `/spec`, updated by `implement` and `debugger` — you read the reports, you rarely edit them |
+| `docs/adr/` | Per hard decision | Written by `domain-modeling` when a non-obvious, hard-to-reverse choice is made |
+| `CHANGELOG.md` | Per commit, via `changelog-writer` | Whenever something user-facing changes — automated through `/commit-push` |
+| `README.md` | Per commit, via `readme-updater` | Whenever the change makes something in it stale — automated through `/commit-push` |
 | `configs/config.yaml` | Per project | When adding new configuration |
 | `dvc.yaml` | Per pipeline change | When adding or renaming pipeline stages |
-| `pyproject.toml` | Occasionally | When adding dependencies |
+| `pyproject.toml` | Occasionally | When adding dependencies (through `uv add`, never by hand) |
+| `.claude/skills/` | Occasionally | When you add a project-specific skill — `writing-for-agents` is the guide |
+| `.claude/agents/` | Rarely | When you need a new specialist or want to change a model tier |
 | `Makefile` | Rarely | When adding new workflow shortcuts |
 | `Dockerfile` | Rarely | When changing runtime requirements |
 | `docker-compose.yml` | Rarely | When adding services |
 | `.github/workflows/` | Rarely | When changing CI/CD behaviour |
 | `.pre-commit-config.yaml` | Rarely | When adding new hooks or updating versions |
-| `CLAUDE.md` | Per sprint | Keep it current so AI tools stay effective |
+| `.claude/hooks/`, `.claude/settings.json` | Almost never | Only if you want to extend the guardrails — they're meant to stay fixed |

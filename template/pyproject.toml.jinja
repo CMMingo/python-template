@@ -2,7 +2,7 @@
 name = "{{ project_name }}"
 version = "0.1.0"
 description = "{{ description }}"
-authors = ...
+# authors = [{ name = "Your Name", email = "you@example.com" }]
 requires-python = ">={{ python_version }}"
 readme = "README.md"
 {% if open_source_license != "None" %}
@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "ruff",
+  "ty",
   "pre-commit",
   "pytest",
   "pytest-cov",

@@ -10,6 +10,7 @@
 #   3. Installs pre-commit hooks
 #   4. Initialises DVC (if not already initialised)
 #   5. Copies .env.example → .env (if .env doesn't exist)
+#   6. Best-effort installs graphify and rtk (warns and continues on failure -- optional tools)
 
 set -euo pipefail
 
@@ -52,6 +53,45 @@ if [ ! -f ".env" ]; then
   warn ".env created from .env.example — fill in your values."
 else
   info ".env already exists — skipping."
+fi
+
+# ── 6. Optional tooling (graphify, rtk) ────────────────────────────────────────
+# Best-effort: these are convenience tools, not real dependencies. Warn and
+# continue on failure rather than blocking the rest of setup.
+
+if ! command -v graphify &> /dev/null; then
+  info "Installing graphify..."
+  (uv tool install graphifyy && graphify install) || warn "graphify install failed -- install manually later: https://github.com/Graphify-Labs/graphify"
+else
+  info "graphify already installed -- skipping."
+fi
+
+if ! command -v rtk &> /dev/null; then
+  info "Installing rtk..."
+  case "$(uname -s)" in
+    Darwin*)
+      if command -v brew &> /dev/null; then
+        brew install rtk || warn "rtk install via brew failed -- install manually: https://github.com/rtk-ai/rtk"
+      else
+        curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh || warn "rtk install failed -- install manually: https://github.com/rtk-ai/rtk"
+      fi
+      ;;
+    Linux*)
+      curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh || warn "rtk install failed -- install manually: https://github.com/rtk-ai/rtk"
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      if command -v winget &> /dev/null; then
+        winget install rtk-ai.rtk || warn "rtk install via winget failed -- install manually: https://github.com/rtk-ai/rtk"
+      else
+        warn "winget not found -- install rtk manually: https://github.com/rtk-ai/rtk"
+      fi
+      ;;
+    *)
+      warn "Unrecognized OS ($(uname -s)) -- skipping rtk auto-install. See https://github.com/rtk-ai/rtk"
+      ;;
+  esac
+else
+  info "rtk already installed -- skipping."
 fi
 
 info "Setup complete. Activate your environment with:"

@@ -15,6 +15,7 @@ This file provides context to Claude about this project. Fill in each section as
 - Python {{ python_version }}+
 - uv (dependency management)
 - Ruff (lint + format) + pre-commit
+- ty (type checking)
 - pytest (testing)
 - dvc (pipeline management)
 - docker and docker-compose for container creation
@@ -23,11 +24,29 @@ This file provides context to Claude about this project. Fill in each section as
 ## Common commands
 
 ```bash
+make setup       # fresh clone: uv, deps, pre-commit, DVC, .env, graphify/rtk
 make install     # install dependencies
 make test        # run tests
 make lint        # lint with ruff
+make typecheck   # type-check with ty
 make format      # format with ruff
 ```
+
+## Development workflow
+
+For anything bigger than a one-line fix, this is the shape the process takes end to end. Nothing here is a command you run in sequence -- each piece triggers on its own (model-invoked, user-invoked, or hook-enforced). This section is a map of how they compose, not a recipe.
+
+1. **Clarify intent, if it isn't already clear.** Loose idea, nothing concrete yet: `/grill-with-docs` (interview, grounded in this repo, settles terms into `CONTEXT.md` and hard decisions into `docs/adr/` via `domain-modeling`). Skip this when the request is already concrete.
+2. **Write it down: `/spec`.** Turns the request into `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md` plus a seam-organized `plan/PLAN.md` task breakdown -- problem, solution, decisions, and a *Testing Decisions* section naming the seam -- and creates the matching branch (`feat/<yyyy_mm>-<name>`, `fix/<yyyy_mm>-<name>`, or `refactor/<yyyy_mm>-<name>`). Skip for trivial changes.
+3. **Implement.** `/spec` continues straight into the `implement` skill, in the same conversation, by default -- `tdd` at each agreed seam, with `logic-checker` checking each seam's code against the spec's intent before that seam's test confirms green (tests only catch what they were written to catch; this catches what's missing or built against the wrong understanding), `make test`/`make lint`/`make typecheck` running throughout, `plan/PLAN.md` checked off as it goes. Once every seam's covered, a deliberate refactor pass addresses anything `tdd` flagged as worth restructuring (only if something was flagged), then an independent `code-reviewer` pass runs over the full diff, and a report of what happened gets written to the spec's `reports/` folder. Reports after each seam so you can follow along. `implement` doesn't pause between seams for confirmation either way, so stepping away doesn't change how it runs -- only who's there to read the reports as they land. Use `claude-handoff` instead when you want to close the session entirely and have it keep going unattended. Either way, it stops short of committing.
+4. **Keep the docs honest, then commit & push.** Run `/commit-push` when you're ready -- it only runs when you explicitly ask for it, never on its own. It first dispatches `changelog-writer` (records the change in `CHANGELOG.md`, history, append-only) and `readme-updater` (fixes whatever the change made stale in `README.md`, current state, pruned as it goes), so doc updates land in the same commit(s) as the code they describe -- then stages the diff, drafts a commit message, commits (splitting into several logical commits if the diff is large), and pushes once at the end. `test-gate` still hard-blocks every commit until `make test` passes (no override) and the destructive-command guardrail still applies, exactly as if you'd typed the commands yourself -- including inside a `claude-handoff` background run. Committing by hand outside Claude Code goes through the `.pre-commit-config.yaml` copy of that gate instead, which you can bypass with `--no-verify` if you have a real reason to.
+5. **Open the PR yourself.** Not automated -- `gh pr create` or the GitHub UI, once you're happy with what's pushed.
+
+**Debugging is a separate track, not a variant of steps 1-3.** Something broken, throwing, or slow goes through `diagnosing-bugs` instead of `/spec` + `implement`: it dispatches the `debugger` subagent -- Opus, higher reasoning effort, a deliberately different, more skeptical mindset (resist the first plausible cause; consider causes outside the code path; distrust your own assumptions about how things already work). For a whole half-built or flaky feature rather than one crisp symptom, `diagnosing-bugs` triages it first -- sorting confirmed bugs (`debugger`, one at a time) from pieces that were simply never built (`/spec` + `implement` instead). Feature work optimizes for the simplest correct build against a decided spec; debugging optimizes for finding what's *actually* true about something already broken -- different enough problems that they don't share a model tier or a process. `debugger` loops through ranked hypotheses for up to two rounds before stopping to write up what it tried rather than guessing indefinitely. `debugger` still ends the same way as `implement`: `code-reviewer` for anything non-trivial, then `/commit-push` -- it never commits itself.
+
+`context-scout` is the fact-finder any of the above dispatches for a repo lookup instead of guessing. The destructive-command guardrail hook runs under all of it, on every Bash call, independent of which step you're in.
+
+Full rosters: [.claude/skills/README.md](.claude/skills/README.md), [.claude/agents/README.md](.claude/agents/README.md).
 
 ## General guidelines
 
