@@ -1,16 +1,22 @@
 # {{ project_name }}
-
+{% if description %}
 {{ description }}
-
+{% endif %}
 ---
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) — dependency management
-- [Docker](https://docs.docker.com/get-docker/) *(optional)* — containerised runs
-- [DVC](https://dvc.org/) *(optional)* — data and pipeline versioning (installed as dev dependency)
-- [graphify](https://github.com/Graphify-Labs/graphify) *(optional)* — codebase knowledge graph for AI assistants (auto-installed by `setup.sh`, best-effort)
-- [rtk](https://github.com/rtk-ai/rtk) *(optional)* — filters/compresses command output before it reaches an agent's context (auto-installed by `setup.sh`, best-effort)
+{%- if project_layout == 'product' %}
+- [Node.js](https://nodejs.org/) — once the frontend exists (see `frontend/decide-frontend-style.md`)
+{%- endif %}
+{%- if use_ml %}
+- [DVC](https://dvc.org/) — data and pipeline versioning (installed as dev dependency)
+{%- endif %}
+- [graphify](https://github.com/Graphify-Labs/graphify) *(optional)* — codebase knowledge graph for AI assistants
+- [rtk](https://github.com/rtk-ai/rtk) *(optional)* — filters/compresses command output before it reaches an agent's context
+
+These tools are installed once per machine, not per project: `setup.sh` checks for the required ones and tells you how to install what's missing.
 
 ---
 
@@ -18,27 +24,46 @@
 
 ```bash
 bash scripts/setup.sh
-source .venv/bin/activate
 ```
 
-`setup.sh` will: install uv if missing, sync dependencies, install pre-commit hooks, initialise DVC, create `.env` from `.env.example`, and best-effort install `graphify` and `rtk` (warns and continues if either fails -- they're conveniences, not hard requirements).
+`setup.sh` will: check the tools above, install the Python dependencies{{ " and, if it exists, the frontend" if project_layout == 'product' }}, install the pre-commit hook{{ ", initialise DVC" if use_ml }}, and create `.env` from `.env.example`. It never installs anything system-wide.
+
+Dependencies are not written by hand: they were resolved to their latest versions when the project was generated, pinned exactly in `{{ py_root }}pyproject.toml` and locked in `{{ py_root }}uv.lock`{{ " (and `frontend/package.json` and `package-lock.json`)" if project_layout == 'product' }}. Add more with `uv add <pkg>` (or `uv add --dev <pkg>`){{ " from `backend/`, and `npm install <pkg>` from `frontend/`" if project_layout == 'product' }}; both pin the exact version.
 
 ---
 
 ## Project structure
 
-```
+```text
 {{ project_name }}/
-├── {{ project_name }}/         # importable package
+{%- if project_layout == 'product' %}
+├── backend/
+│   ├── app/                    # importable package
+{%- if use_ml %}
+│   │   ├── pipeline/           # DVC stages: prepare, train, evaluate (placeholders)
+{%- endif %}
+│   │   └── utils/
+│   │       └── logger.py       # shared logger (see Logging)
+│   ├── tests/                  # backend tests (pytest)
+│   ├── pyproject.toml          # dependencies pinned exactly
+│   └── uv.lock
+├── frontend/                   # not chosen yet: start with decide-frontend-style.md
+├── infra/                      # infrastructure as code
+│   └── tests/
+{%- else %}
+├── {{ package_name }}/         # importable package
+{%- if use_ml %}
+│   ├── pipeline/               # DVC stages: prepare, train, evaluate (placeholders)
+{%- endif %}
 │   └── utils/
-│       ├── logger.py           # shared logger (see Logging)
-│       └── __init__.py
+│       └── logger.py           # shared logger (see Logging)
 ├── tests/                      # pytest test suite
-├── notebooks/                  # Jupyter notebooks (not committed to Docker)
+{%- endif %}
 ├── scripts/                    # one-off scripts and setup helpers
-├── configs/
-│   ├── config.yaml             # main config
-│   └── logging.yaml            # logging config (loaded automatically)
+├── config/
+│   └── config.yaml             # main config
+{%- if use_ml %}
+├── notebooks/                  # Jupyter notebooks
 ├── data/
 │   ├── raw/                    # original, immutable data (DVC-tracked)
 │   └── processed/              # cleaned / transformed data (DVC-tracked)
@@ -46,23 +71,25 @@ source .venv/bin/activate
 │   ├── mlruns/                 # MLflow tracking (gitignored)
 │   └── artifacts/              # model checkpoints, outputs (DVC-tracked)
 ├── results/                    # evaluation outputs, plots (gitignored)
-├── logs/                       # runtime logs (gitignored)
-├── frontend/                   # frontend code (occasional -- see the frontend-design skill)
-│   └── src/
-├── infra/                      # infrastructure as code (occasional)
-├── docs/
-│   ├── specs/                   # per-spec folders: SPEC.md, plan/, reports/ (committed -- see /spec)
-│   ├── adr/                     # architecture decision records (committed -- see domain-modeling)
-│   └── build/                   # generated API docs from `make docs` (gitignored)
-├── Dockerfile
-├── docker-compose.yml
 ├── dvc.yaml                    # DVC pipeline definition
-├── pyproject.toml
+{%- endif %}
+├── logs/                       # runtime logs (gitignored)
+├── docs/
+│   ├── specs/                  # per-spec folders: SPEC.md, plan/, reports/ (committed -- see /spec)
+│   ├── adr/                    # architecture decision records (committed -- see domain-modeling)
+│   └── build/                  # generated API docs from `make docs` (gitignored)
+{%- if project_layout == 'simple' %}
+├── pyproject.toml              # dependencies pinned exactly
+├── uv.lock
+{%- endif %}
 ├── Makefile
-├── CLAUDE.md                   # project context for AI assistants
+├── AGENTS.md                   # project context for AI assistants
+├── CLAUDE.md                   # Claude Code entry point: imports AGENTS.md
 └── CHANGELOG.md
 ```
-
+{% if project_layout == 'product' %}
+`config/`, `logs/`{{ ", `data/`, `runs/` and `notebooks/`" if use_ml }} stay at the repo root and are shared by every part of the product; the code in `backend/` finds them by anchoring to the repo root, not to the working directory.
+{% endif %}
 ---
 
 ## Docs
@@ -86,28 +113,40 @@ See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full sp
 
 | Command | Description |
 |---|---|
-| `make setup` | Bootstrap a fresh clone — installs uv, deps, pre-commit hooks, initialises DVC, creates `.env`, best-effort installs `graphify`/`rtk` |
-| `make install` | Install dependencies and pre-commit hooks (assumes uv is already installed) |
+| `make setup` | Bootstrap a fresh clone — checks the required tools, installs deps and the pre-commit hook{{ ', initialises DVC' if use_ml }}, creates `.env` |
+| `make install` | Install dependencies and the pre-commit hook (assumes uv is already installed) |
+| `make sync` | Install the Python dependencies from the lockfile |
+{%- if project_layout == 'product' %}
+| `make dev` | Start the backend and frontend dev servers (fill in the two commands in `scripts/dev.sh` once the stack is chosen) |
+{%- endif %}
 
 ### Code quality
 
 | Command | Description |
 |---|---|
-| `make test` | Run tests with coverage report |
-| `make test-fast` | Run tests without coverage |
-| `make lint` | Lint with Ruff |
+| `make test` | Run {{ 'all tests (backend + frontend)' if project_layout == 'product' else 'tests with coverage report' }} |
+| `make test-py` | Run the Python tests with coverage |
+| `make test-fast` | Run the Python tests without coverage |
+| `make lint` | {{ 'Ruff, ty and the frontend linter' if project_layout == 'product' else 'Ruff and ty' }} |
+| `make lint-py` | Lint Python with Ruff |
+{%- if project_layout == 'product' %}
+| `make test-frontend` | Run the frontend tests (vitest) |
+| `make lint-frontend` | Lint the frontend |
+{%- endif %}
 | `make typecheck` | Type-check with ty |
 | `make format` | Format with Ruff |
+| `make format-check` | Check formatting without changing files |
 | `make fix` | Lint, auto-fix, and format in one step |
 | `make pre-commit` | Run all pre-commit hooks on every file |
 
-### Docs
+### API docs
 
 | Command | Description |
 |---|---|
 | `make docs` | Generate HTML docs into `docs/build/` using pdoc |
 | `make docs-serve` | Serve docs locally with live reload |
 
+{% if use_ml -%}
 ### DVC
 
 | Command | Description |
@@ -119,19 +158,11 @@ See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full sp
 Run a single stage or check status directly:
 
 ```bash
-uv run dvc repro <stage_name>
-uv run dvc status
+uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc repro <stage_name>
+uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc status
 ```
 
-### Docker
-
-| Command | Description |
-|---|---|
-| `make docker-build` | Build the Docker image |
-| `make docker-up` | Start services in detached mode |
-| `make docker-down` | Stop and remove containers |
-
-### Cleanup
+{% endif %}### Cleanup
 
 | Command | Description |
 |---|---|
@@ -141,7 +172,7 @@ uv run dvc status
 
 ## Configuration
 
-The main config lives in `configs/config.yaml`. For local overrides (secrets, local paths), create `configs/config.local.yaml` — it is gitignored.
+The main config lives in `config/config.yaml`. For local overrides (secrets, local paths), create `config/config.local.yaml` — it is gitignored.
 
 Copy `.env.example` to `.env` and fill in your values. `.env` is gitignored.
 
@@ -149,16 +180,16 @@ Copy `.env.example` to `.env` and fill in your values. `.env` is gitignored.
 
 ## Logging
 
-Logging is configured via `configs/logging.yaml` and loaded automatically on the first call to `get_logger`. Falls back to console + dated file handler if the YAML is missing.
+Logging is configured in code, in `utils/logger.py`: console plus a rotating file, set up on the first call to `get_logger`. Set `LOG_LEVEL` (for example `DEBUG`) in the environment to change the level; the default is `INFO`.
 
 ```python
-from {{ project_name }}.utils.logger import get_logger
+from {{ package_name }}.utils.logger import get_logger
 
 logger = get_logger(__name__)
 logger.info("Starting process")
 ```
 
-Logs are written to `logs/` (gitignored). The file handler rotates at 10 MB, keeping 5 backups.
+Logs are written to `logs/` at the repo root (gitignored), whichever directory the process starts in. The file handler rotates at 10 MB, keeping 5 backups.
 
 ---
 
@@ -166,14 +197,12 @@ Logs are written to `logs/` (gitignored). The file handler rotates at 10 MB, kee
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | push / PR to `main` | lint, format check, tests |
-| `cd.yml` | manual (`workflow_dispatch`) | build & push Docker image to GHCR |
+| `ci.yml` | push / PR to `main` | Python: `make lint-py`, `make format-check`, `make typecheck`, `make test-py`.{{ ' Frontend: lint, test and build.' if project_layout == 'product' }} Cancels superseded runs |
+| `markdown.yml` | push / PR touching `.md` files | markdownlint and relative-link check |
 
-To enable automatic CD on version tags, uncomment the `push` block in `.github/workflows/cd.yml` and push a tag:
+CI calls the same `make` targets you run locally, so a green `make lint test` means a green pipeline.
 
-```bash
-git tag v1.0.0 && git push origin v1.0.0
-```
+`.github/dependabot.yaml` is gitignored by default. To get monthly dependency update PRs, remove its line from `.gitignore` and commit the file. Updates are grouped (dev tooling and runtime, minor and patch batched, one PR per major), and the Ruff version in `.pre-commit-config.yaml` has to be bumped by hand to match `pyproject.toml`.
 
 ---
 
@@ -181,14 +210,14 @@ git tag v1.0.0 && git push origin v1.0.0
 
 1. Pick or create an issue using one of the templates in `.github/ISSUE_TEMPLATE/`
 2. Create a branch: `git checkout -b feat/your-feature`
-3. Make your changes — `make fix` before committing
+3. Make your changes — `make fix` before committing. Commits only run fast checks (formatting, large files, secrets, type check); run `make test` when you want the suite, CI runs it on every push
 4. Open a PR using the pull request template
 5. CI must pass before merging
-{% if open_source_license != "None" %}
+{%- if open_source_license != "None" %}
 
 ---
 
 ## License
 
 {{ open_source_license }}
-{% endif %}
+{%- endif %}
