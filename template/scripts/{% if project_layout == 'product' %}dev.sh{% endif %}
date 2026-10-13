@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# dev.sh — start the backend and the frontend dev servers together; Ctrl+C stops both
+#
+# Usage:
+#   make dev          (or: bash scripts/dev.sh)
+#
+# TEMPLATE: the two commands below are empty until the stack is chosen. Fill them in once
+# the backend entry point exists and the frontend is scaffolded (see
+# frontend/decide-frontend-style.md). A command left empty is skipped.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Runs from backend/. For example: uv run uvicorn app.main:app --reload
+BACKEND_CMD=""
+
+# Runs from frontend/. For example: npm run dev
+FRONTEND_CMD=""
+
+if [ -z "$BACKEND_CMD" ] && [ -z "$FRONTEND_CMD" ]; then
+  echo "dev: nothing to start. Set BACKEND_CMD and FRONTEND_CMD in scripts/dev.sh." >&2
+  exit 1
+fi
+
+# Each server runs in its own process group (job control), so stopping one also stops what it
+# started (npm -> node, uvicorn -> its reloader).
+set -m
+pids=()
+
+stop_all() {
+  trap - EXIT INT TERM
+  for pid in "${pids[@]}"; do
+    kill -- "-$pid" 2>/dev/null || true
+  done
+}
+trap stop_all EXIT INT TERM
+
+if [ -n "$BACKEND_CMD" ]; then
+  echo "Starting the backend: $BACKEND_CMD"
+  (cd "$REPO_ROOT/backend" && eval "$BACKEND_CMD") &
+  pids+=($!)
+fi
+
+if [ -n "$FRONTEND_CMD" ]; then
+  echo "Starting the frontend: $FRONTEND_CMD"
+  (cd "$REPO_ROOT/frontend" && eval "$FRONTEND_CMD") &
+  pids+=($!)
+fi
+
+wait
