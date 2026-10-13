@@ -1,6 +1,6 @@
 # Python Project Template — Complete File Reference
 
-This document explains every file in the template: what it is, what it does, what the code inside means, and when it becomes relevant in a real project.
+This document explains every file in the template: what it is, what it does, what the code inside means, and when it becomes relevant in a real project. It covers the three project layouts the template can generate; sections say which layout a file belongs to.
 
 ---
 
@@ -10,15 +10,45 @@ Before diving into individual files, it helps to understand Copier's mechanics.
 
 The repo has two levels:
 
-```
+```text
 python-template/
-├── copier.yml          ← Copier's control file (questions, settings)
+├── copier.yml          ← Copier's control file (questions, derived variables, setup tasks)
 └── template/           ← everything here gets copied into your new project
 ```
 
-When you run `copier copy gh:you/python-template ./my-project`, Copier reads `copier.yml`, asks you the questions defined there, and then copies everything inside `template/` into `my-project/`, substituting `{{ variable }}` placeholders along the way.
+When you run `copier copy --trust gh:you/python-template ./my-project`, Copier reads `copier.yml`, asks the questions defined there, copies everything inside `template/` into `my-project/` (substituting `{{ variable }}` placeholders along the way), and finally runs the setup tasks.
 
-Files ending in `.jinja` are treated as Jinja2 templates — the `.jinja` extension is stripped after rendering, so `pyproject.toml.jinja` becomes `pyproject.toml` in your project. Files without `.jinja` are copied verbatim.
+Files ending in `.jinja` are treated as Jinja2 templates — the `.jinja` extension is stripped after rendering, so `pyproject.toml.jinja` becomes `pyproject.toml` in your project. Files without `.jinja` are copied verbatim. File and folder **names** are rendered too, which is how one template produces different trees:
+
+- **A name that renders to an empty string is skipped**, together with everything inside it. A folder called `{% if use_ml %}notebooks{% endif %}` exists only when `use_ml` is on.
+- **A name can render to a path.** A folder called `{{ py_root }}tests` becomes `backend/tests` when `py_root` is `backend/`, and plain `tests` when it is empty.
+
+### One template, three kinds of project
+
+The template answers two questions (`project_layout` and `use_ml`) and covers three kinds of project:
+
+| Kind | Answers | Shape |
+|---|---|---|
+| Simple Python project | `simple`, `use_ml: no` | Package named after the project and a single `tests/` folder, both at the repo root. No frontend, no infra |
+| ML / data project | `simple`, `use_ml: yes` | The simple shape plus `notebooks/`, `data/`, `runs/`, `results/`, `dvc.yaml` and a runnable placeholder pipeline |
+| Product | `product` (+ `use_ml` if it has ML) | `backend/` (package `app`, own `pyproject.toml`, `uv.lock` and `tests/`), `frontend/` (empty: a guide helps you choose the stack later) and `infra/` (with `tests/`) |
+
+The three shapes share about 80% of their files — the whole `.claude/` folder, the GitHub templates, `AGENTS.md`, pre-commit, the workflows — so they are one template with conditions, not three copies that would drift apart. Everything that is shared by every part of a project (`config/`, `logs/`, `docs/`, `scripts/`, and the ML folders when present) lives at the repo root in all layouts.
+
+```text
+simple                      simple + use_ml             product (+ use_ml adds the ML folders at the root)
+├── demo_proj/              ├── demo_proj/              ├── backend/
+│   └── utils/              │   ├── pipeline/           │   ├── app/
+├── tests/                  │   └── utils/              │   │   └── utils/
+├── config/                 ├── tests/                  │   ├── tests/
+├── logs/                   ├── config/                 │   ├── pyproject.toml
+├── docs/                   ├── notebooks/              │   └── uv.lock
+├── scripts/                ├── data/raw/               ├── frontend/        (decide-frontend-style.md)
+├── pyproject.toml          ├── runs/                   ├── infra/tests/
+├── uv.lock                 ├── results/                ├── config/ logs/ docs/ scripts/
+└── Makefile …              ├── dvc.yaml                └── Makefile …
+                            └── logs/ docs/ scripts/ …
+```
 
 ---
 
@@ -29,33 +59,73 @@ The master config for the template itself. It is never copied into generated pro
 ```yaml
 project_name:
   type: str
-  help: Project name (used for the package folder and pyproject.toml)
+  validator: ...              # lowercase letters, digits, underscores
 
-description:
-  type: str
-  help: Short description of the project
-  default: ""
+description:        {type: str, default: ""}
+python_version:     {type: str, default: "3.12"}
+open_source_license: {choices: [MIT, Apache-2.0, GPL-3.0, None], default: MIT}
 
-python_version:
+project_layout:
   type: str
-  help: Minimum Python version
-  default: "3.12"
+  default: simple
+  choices:
+    "Simple: package and tests at the repo root": simple
+    "Product: backend/, frontend/ and infra/, each with its own tests": product
 
-open_source_license:
-  type: str
-  help: License
-  default: MIT
-  choices: [MIT, Apache-2.0, GPL-3.0, None]
+use_ml:
+  type: bool
+  default: false
+
+# derived, never asked (`when: false`)
+py_root:      "{{ 'backend/' if project_layout == 'product' else '' }}"
+package_name: "{{ 'app' if project_layout == 'product' else project_name }}"
 
 _subdirectory: template
-_exclude:
-  - copier.yml
-  - README.md
+_tasks:
+  - command: bash scripts/resolve-latest.sh
 ```
 
-Each top-level key becomes a variable available as `{{ variable_name }}` in every `.jinja` file. The `_subdirectory: template` line tells Copier that the actual files to copy live inside the `template/` folder, not at the root. `_exclude` lists files that exist in the repo but should never be copied to generated projects — in this case, the template's own `README.md` and `copier.yml` itself.
+Each top-level key becomes a variable available as `{{ variable_name }}` in every `.jinja` file and in file names. The `_subdirectory: template` line tells Copier that the actual files to copy live inside the `template/` folder, not at the root. The template's own `README.md`, guides and `copier.yml` sit outside `template/`, so they are never copied — no `_exclude` is needed (an earlier version excluded `README.md`, which accidentally dropped the *generated* project's README too).
 
-When you improve the template and push changes, anyone who generated a project from it can run `copier update` in their project directory to pull in the changes. Copier diffs the old and new template versions and merges the changes, similar to a Git rebase.
+**The questions.**
+
+- `project_name` is validated (lowercase letters, digits and underscores, starting with a letter) because in `simple` projects it is also the importable package name.
+- `project_layout` and `use_ml` decide the shape as described above.
+- There is deliberately **no frontend question**. Picking a framework needs knowledge of the product, which you won't have when the repo is created, so `product` projects get `frontend/decide-frontend-style.md` instead (see [`frontend/`](#frontend-product-only)).
+
+**The derived variables.** `py_root` and `package_name` are computed from the answers, never asked (`when: false`). Putting the decision in one variable keeps every other file simple: `{{ py_root }}pyproject.toml.jinja` is the one file that lands at the root or in `backend/`.
+
+**The task.** After copying, Copier runs `scripts/resolve-latest.sh` (see [`scripts/`](#scripts)). That is why generation needs network access and `copier copy --trust`. The script skips itself once `uv.lock` exists, so `copier update` doesn't redo it, and with a warning if `uv` is missing.
+
+**The message.** `_message_after_copy` is printed when generation finishes: where the project is, the next steps for the layout chosen (`bash scripts/setup.sh`, filling in `AGENTS.md`, and for `product` deciding the frontend and filling in `scripts/dev.sh`), how to turn Dependabot on, and how to pull later template changes.
+
+**Updating.** When you improve the template and push changes, anyone who generated a project from it can run `copier update` in their project directory to pull in the changes. Copier diffs the old and new template versions and merges the changes, similar to a Git rebase. This depends on `.copier-answers.yml` (see below), which records the answers and the template version a project was generated from, and on a clean git tree. The `resolve-latest.sh` task runs only on the first `copy` (`when: "{{ _copier_operation == 'copy' }}"`): during an update Copier regenerates the project in temporary folders to compute a diff, and running the task there produced different dependency pins, which the merge then used to remove the project's own. Tag the template repo when you release a set of changes (`git tag v0.2.0`): Copier updates to the latest tag and a project can be pinned to a specific one; without tags it follows the latest commit.
+
+---
+
+## Testing the template
+
+A template is easy to break in ways only a generated project reveals: a file that renders in one layout and fails in another, a hook that rewrites generated files on the first commit. `check-template.sh`, at the root of the template repo (outside `template/`, so never copied), renders all four combinations — `simple` and `product`, each with and without `use_ml` — into temporary folders and checks them in parallel:
+
+```bash
+bash check-template.sh                 # all four
+bash check-template.sh product:true    # one combination (<layout>:<use_ml>)
+```
+
+Per generated project it checks that:
+
+- the expected files exist (`AGENTS.md`, `CLAUDE.md`, `.copier-answers.yml`, `.gitattributes`, the lockfile and `.python-version`) and the git branch is `main`;
+- Dependabot's config is gitignored;
+- lint, format check, type check and tests pass, and the frontend targets skip cleanly when there is no frontend;
+- a **fresh checkout** — what CI sees, without `.venv` or caches — passes markdownlint and the relative-link check;
+- `pre-commit run --all-files` passes and leaves the working tree clean, so the first commit in a new project doesn't rewrite anything;
+- `copier update` works: the script renders from a committed, tagged copy of the template, adds a change to it, updates the generated project, and checks that the change merged while the pins, lockfile and hooks stayed untouched;
+- `product`: `make dev` refuses to start while `scripts/dev.sh` is unconfigured, and `dev.sh` stops its servers on Ctrl+C;
+- `use_ml`: `dvc repro` runs the placeholder pipeline.
+
+It prints a per-project report and the log tail of anything that failed. `.github/workflows/test-template.yml` runs it on every push and pull request to the template repo; run it locally after any change under `template/` or to `copier.yml`. It was written after a manual render-and-check routine kept catching real bugs, and its first run caught an invalid `copier.yml`.
+
+---
 
 ---
 
@@ -63,79 +133,58 @@ When you improve the template and push changes, anyone who generated a project f
 
 ### `pyproject.toml`
 
-The single most important file in a modern Python project. It is the standardised replacement for the old `setup.py`, `setup.cfg`, `requirements.txt`, and scattered tool config files — everything lives here now.
+The single most important file in a modern Python project. It is the standardised replacement for the old `setup.py`, `setup.cfg`, `requirements.txt`, and scattered tool config files — everything lives here now. It lives in the repo root for `simple` projects and in `backend/` for `product` projects.
 
 ```toml
 [project]
 name = "my_project"
 version = "0.1.0"
 description = "..."
-# authors = [{ name = "Your Name", email = "you@example.com" }]
 requires-python = ">=3.12"
-readme = "README.md"
-license = { text = "MIT" }
-dependencies = [
-  "pyyaml",        # used by the logger to load configs/logging.yaml
-]
+dependencies = []          # runtime dependencies: add with `uv add`
 
-[project.optional-dependencies]
-dev = [
-  "ruff",          # linting and formatting
-  "ty",            # type checking (Astral's fast type checker)
-  "pre-commit",    # git hook runner
-  "pytest",        # test framework
-  "pytest-cov",    # coverage reporting for pytest
-  "dvc",           # data version control
-]
-```
-
-The `[project.optional-dependencies]` block defines a group called `dev`. When you run `uv sync --all-extras`, uv installs both the main dependencies and everything in `dev`. In production (e.g. inside Docker), you run `uv sync --no-dev` to install only the main dependencies — leaner image.
-
-```toml
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+add-bounds = "exact"
+
 [tool.hatch.build.targets.wheel]
-packages = ["my_project"]
-```
+packages = ["my_project"]  # "app" in product projects
 
-This tells Python's build tooling how to package your project if you ever want to publish it to PyPI or install it as a proper package. `hatchling` is a modern, fast build backend. The `packages` line tells it which folder is the actual package to include.
+[tool.ty.src]
+include = ["my_project", "tests"]
 
-```toml
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 
-[tool.ruff.lint]
-select = [
-  "E",   # pycodestyle errors
-  "W",   # pycodestyle warnings
-  "F",   # pyflakes (unused imports, undefined names, etc.)
-  "I",   # isort (import ordering)
-  "UP",  # pyupgrade (modernise Python syntax)
-  "B",   # flake8-bugbear (common bugs and design issues)
-]
-ignore = []
-```
-
-Ruff's configuration. Rather than running separate tools (flake8, isort, black, pyupgrade), Ruff does all of it in one pass, much faster. The `select` list controls which rule categories are active. You can add more (e.g. `"N"` for naming conventions) or suppress specific rules by adding their code to `ignore`.
-
-```toml
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=my_project --cov-report=term-missing"
 ```
 
-Pytest configuration. `testpaths` tells pytest where to look for tests. `addopts` are flags automatically passed on every run — here, they enable coverage measurement for your package and print a terminal report showing which lines are not covered.
+**No hand-written dependency list.** The template deliberately ships `dependencies = []`. When the project is generated, `scripts/resolve-latest.sh` runs `uv add --dev ruff ty pre-commit pytest pytest-cov` (plus `dvc` and `ipykernel` with `use_ml`), so the project starts on the latest versions of everything instead of whatever the template's author wrote down a year ago. uv records the tooling in `[dependency-groups] dev`, which a plain `uv sync` installs. The runtime list starts empty on purpose: add what the project needs with `uv add`.
 
-`ty` needs no configuration block — `uv run ty check .` (wrapped as `make typecheck`) picks up `requires-python` and the package layout from `[project]` directly.
+**Exact pins.** `add-bounds = "exact"` makes uv write `ruff==0.17.0` instead of `ruff>=0.17.0`, for the generated set and for every later `uv add`. Together with the committed `uv.lock`, nothing changes under the code between machines or rebuilds, and updates happen as reviewed pull requests (see Dependabot below).
 
----
+**Other details.**
+
+- `hatchling` is the build backend; `packages` tells it which folder is the importable package.
+- `[tool.ty.src] include` limits type checking to the package and its tests, so scripts and agent tooling under `.claude/` are not checked.
+- In `simple` projects `.claude/` is excluded from Ruff for the same reason. `product` projects don't need it: Ruff runs from `backend/`.
+- `product` projects omit `readme = "README.md"`, because the README sits one folder above `backend/` and hatchling can't package a file outside the project.
+- The pytest coverage flag points at the package, relative to where pytest runs (the project folder, not the repo root).
+- The license is written as an SPDX expression (`MIT`, `Apache-2.0`, `GPL-3.0-only`), not the older `{ text = ... }` table. The template does not generate a `LICENSE` file: the question only fills this field and the README, which suits personal projects.
+
+### `uv.lock`
+
+The exact resolved version of every dependency, including transitive ones. It is **committed**: for an application, a lockfile is what makes `uv sync` reproducible. (An earlier version of the template gitignored it, which also broke any `--frozen` install.) `product` projects have it in `backend/` next to `pyproject.toml`.
 
 ### `README.md`
 
-The project's front page, shown on GitHub and in documentation. Already written as a template — it documents the requirements (including the optional `graphify` and `rtk` agent-support tools), the project structure, all `make` commands in tables, configuration, logging, and CI/CD.
+The project's front page, shown on GitHub and in documentation. Already written as a template that adapts to the layout — it documents the requirements (including the optional `graphify` and `rtk` agent-support tools), the project structure for the chosen layout, all `make` commands in tables, configuration, logging, and CI. DVC sections and the frontend appear only when they apply.
 
 It also has a **Docs** section that spells out the three kinds of documentation a generated project keeps, because the AI workflow writes to all of them and they're easy to confuse:
 
@@ -146,33 +195,21 @@ It also has a **Docs** section that spells out the three kinds of documentation 
 | `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per piece of work: `SPEC.md`, `plan/PLAN.md`, `reports/` | `/spec`, `implement`, `debugger` |
 | `docs/build/` | Generated API docs (gitignored) | `pdoc` via `make docs` |
 
-Fill in the description and update it as the project grows — or let the `readme-updater` subagent do it as part of `/commit-push` (see [`.claude/`](#claude)).
-
----
+Fill in the description and update it as the project grows — or let the `docs-updater` subagent do it as part of `/commit-push` (see [`.claude/`](#claude)).
 
 ### `CHANGELOG.md`
 
-A human-readable log of notable changes across versions. Follows the [Keep a Changelog](https://keepachangelog.com) format:
+A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. It ships with an empty `[Unreleased]` section and the standard subsections (Added, Changed, Deprecated, Removed, Fixed, Security). The `changelog-writer` subagent appends to it on every `/commit-push`. It passes markdownlint as shipped, and the markdown workflow keeps it that way.
 
-```markdown
-## [Unreleased]
-### Added
-### Changed
-### Fixed
-```
+### `AGENTS.md` and `CLAUDE.md`
 
-The `[Unreleased]` section collects changes that haven't been released yet. When you cut a release, you rename it to `[1.0.0] - <date>` and open a new `[Unreleased]` section above it. In this template the `changelog-writer` subagent owns this file: `/commit-push` dispatches it before every commit so the entry lands in the same commit as the code it describes, and it can cut a release section when asked. It is append-only history — it never touches `README.md` (that's `readme-updater`'s job).
+`AGENTS.md` is the project brief for AI assistants, and the file to maintain. `AGENTS.md` is the convention most agent tools read, so the brief isn't tied to one of them. It is a template with sections to fill in and sections that are pre-filled:
 
----
-
-### `CLAUDE.md`
-
-A file specifically for AI coding assistants. When Claude Code opens your project, it reads this file first to understand the context it's operating in. Think of it as a brief for a new team member who reads extremely fast.
-
-```markdown
+```text
 ## Project overview          ← fill in
 ## Architecture              ← fill in
-## Stack & tools             ← pre-filled: Python, uv, Ruff, ty, pytest, dvc, docker
+## Stack & tools             ← pre-filled for the chosen layout (DVC, frontend only when present)
+## Project layout            ← pre-filled: where Python, the UI and the shared folders live
 ## Common commands           ← pre-filled: make install / test / lint / typecheck / format
 ## Development workflow      ← pre-filled: how the skills, subagents and hooks compose
 ## General guidelines        ← pre-filled: dev philosophy, tooling rules, constraints
@@ -180,337 +217,199 @@ A file specifically for AI coding assistants. When Claude Code opens your projec
 ## Out of scope              ← fill in
 ```
 
-The first two and the last section are yours to fill in as the project evolves. The rest ships ready:
+The *Project layout* section matters in `product` projects: it tells the agent that Python lives in `backend/` and that tooling runs from there (or through `make`, which does it for you).
 
-- **Development workflow** is the map of the whole AI-native process — clarify (`/grill-with-docs`) → spec (`/spec`) → implement (`implement`, `tdd`, `logic-checker`, `code-reviewer`) → docs + commit (`/commit-push`) → PR by hand — plus the separate debugging track (`diagnosing-bugs` → `debugger`) and the two hooks that run under everything. It is deliberately a map, not a recipe: each piece triggers on its own (user-invoked, model-invoked, or hook-enforced). Read it once and you know how everything under `.claude/` fits together.
-- **General guidelines** encode the coding philosophy the agent should follow: small functions, flat over nested, explicit over implicit, no premature abstraction, comments only for non-obvious *why*, always use scaffolding/package-manager commands instead of hand-writing config, imports at the top, hard timeouts on external processes, never commit secrets, and "type checker and linter are gates, not suggestions".
-- **Behavioral guidelines** are the four rules of engagement — *Think Before Coding* (surface assumptions, ask when unclear), *Simplicity First* (no speculative features or abstractions), *Surgical Changes* (touch only what the request needs), *Goal-Driven Execution* (turn tasks into verifiable criteria and loop until they pass) — with an anti-patterns table.
-
-The more accurate the fill-in sections are, the better an agent performs — it won't suggest patterns that don't fit, won't touch things marked out of scope, and will use the right commands.
-
----
+`CLAUDE.md` starts with `@AGENTS.md`, which imports the brief. Claude Code reads `CLAUDE.md` and not `AGENTS.md`, so without that line it would never see the brief. Below the import it has an empty **Claude Code specifics** section for instructions that only make sense for Claude Code (everything else belongs in `AGENTS.md`, so there is one place to keep the content). It is deliberately not a jinja template.
 
 ### `Makefile`
 
-A task runner: a file of named shell command shortcuts. You run them with `make <target>`. The pattern `## comment` after each target is used by the `help` target to auto-generate a command list.
+Short commands for everything you do repeatedly. `make help` lists all targets with descriptions (it parses the `## comment` after each target). The Makefile knows where Python lives through one variable, `PY_DIR` (`.` in simple projects, `backend` in product ones), and every Python recipe starts with `cd $(PY_DIR)`, so `make test` works from any folder in the repo.
 
-```makefile
-PROJECT_NAME := my_project    # injected by Copier, used by make docs
-```
+| Target | What it does | Layout |
+|---|---|---|
+| `setup` | `scripts/setup.sh`: project bootstrap of a fresh clone | all |
+| `dev` | Start the backend and frontend dev servers through `scripts/dev.sh` | product |
+| `sync` / `install` | Install from the lockfile / that plus the pre-commit hook (and `npm install` in product, once a frontend exists) | all |
+| `test` | All tests: Python, plus the frontend in product | all |
+| `test-py`, `test-fast` | Python tests with coverage / without | all |
+| `test-frontend` | The frontend's `npm run test`; prints a hint and skips until `frontend/package.json` exists | product |
+| `lint` | Ruff, ty, and the frontend linter in product | all |
+| `lint-py`, `typecheck`, `format`, `format-check`, `fix` | The individual checks. `format-check` changes nothing; CI uses it | all |
+| `lint-frontend` | The frontend's `npm run lint`; skips the same way | product |
+| `pre-commit` | Run all pre-commit hooks on every file | all |
+| `docs`, `docs-serve` | API docs with pdoc into `docs/build/` | all |
+| `dvc-pull`, `dvc-push`, `dvc-repro` | DVC, run through `uv run --project` | `use_ml` |
+| `clean` | Remove caches and build artefacts, skipping `node_modules/` and `.venv/` | all |
 
-Key targets:
-
-- **`make setup`** — calls `scripts/setup.sh`. Use this on a fresh clone.
-- **`make install`** — just `uv sync + pre-commit install`. Use this when uv is already set up and you just pulled changes.
-- **`make fix`** — the most useful day-to-day command: runs `ruff check --fix` (auto-fixes lint issues) then `ruff format` (formats code). Run before committing.
-- **`make test`** — runs pytest with coverage. This is also what the `test_gate.py` hook and the local pre-commit hook run before allowing a commit (see [`.pre-commit-config.yaml`](#pre-commit-configyaml) and [`.claude/hooks/`](#claudehooks)).
-- **`make typecheck`** — runs `ty check .`. CI runs the same thing, and `CLAUDE.md` tells the agent to treat it as a gate, not a suggestion.
-- **`make docs` / `make docs-serve`** — generates HTML documentation from your docstrings using `pdoc`. `uv run --with pdoc` fetches pdoc on-demand without adding it as a permanent dependency.
-- **`make dvc-repro`** — re-runs any DVC pipeline stages whose dependencies have changed.
-- **`make clean`** — deletes compiled Python files, test caches, build artifacts. Useful when things behave strangely.
-
----
-
-### `Dockerfile`
-
-Defines how to build a Docker image for your project.
-
-```dockerfile
-FROM python:3.12-slim
-```
-
-Starts from a minimal official Python image. The `-slim` variant excludes compilers and other tools not needed at runtime, making the image much smaller.
-
-```dockerfile
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-```
-
-Copies the `uv` binary directly from its official Docker image. This is a Docker multi-stage copy trick — you don't need to install uv via curl inside the image, you just grab the binary from the uv image.
-
-```dockerfile
-COPY pyproject.toml uv.lock* ./
-RUN uv sync --no-dev --frozen
-```
-
-Copies dependency files first, then installs. This is a critical Docker pattern — because Docker caches each layer, if your code changes but `pyproject.toml` hasn't, Docker reuses the cached dependency install layer. `--frozen` means it must use the exact versions in `uv.lock`, refusing to resolve differently. `--no-dev` skips dev dependencies (ruff, pytest, etc.) — you don't need those in production.
-
-```dockerfile
-COPY my_project/ ./my_project/
-ENV PATH="/app/.venv/bin:$PATH"
-CMD ["python", "-m", "my_project"]
-```
-
-Copies your source code after dependencies (so code changes don't invalidate the dependency cache). Sets the PATH so the virtualenv's Python is used. `CMD` is the default command — running your package as a module. You'll likely change this to a specific entrypoint.
-
----
-
-### `docker-compose.yml`
-
-Defines and wires together one or more Docker services for local development and deployment.
-
-```yaml
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: my_project:latest
-    env_file:
-      - .env                # loads all variables from .env into the container
-    volumes:
-      - ./data:/app/data    # mounts your local data/ into the container
-      - ./logs:/app/logs
-      - ./runs:/app/runs
-      - ./results:/app/results
-      - ./configs:/app/configs
-    restart: unless-stopped
-```
-
-The volume mounts are important: rather than baking data into the image (which would require a rebuild every time), the container reads data directly from your local filesystem. This means you can update configs or data without touching the image. `restart: unless-stopped` means Docker will restart the container automatically if it crashes or if the machine reboots, unless you explicitly stopped it.
-
-The `db` service (PostgreSQL) is commented out as a ready-to-use example for when you need a database. The `volumes` section at the bottom (also commented) would create a named Docker volume to persist database data between container restarts.
-
----
+CI calls these same targets (`lint-py`, `format-check`, `typecheck`, `test-py`), so the pipeline and your terminal can't drift apart. The tooling targets exist as separate names so CI can run them as separate steps and see which one failed.
 
 ### `.env.example`
 
-A committed template showing which environment variables the project needs, without containing any real values.
-
-```bash
-# DATABASE_URL=postgresql://user:password@localhost:5432/mydb
-# SECRET_KEY=your-secret-key
-```
-
-The workflow is: `.env.example` is committed and shared. Each developer (or deployment environment) copies it to `.env` and fills in real values. `.env` is gitignored so secrets never enter version control. Docker Compose loads `.env` automatically via `env_file: .env`.
-
----
+A template for environment variables. Copy it to `.env` (the setup script does this for you) and fill in real values. `.env` is gitignored so secrets never reach the repo; `.env.example` is committed so teammates know which variables exist.
 
 ### `.gitignore`
 
-Tells Git which files and folders to never track. Key sections:
+Rendered from `.gitignore.jinja`, so ML and frontend entries appear only where they apply. The notable decisions:
 
-- **Python artifacts** — `__pycache__/`, `.pyc` files, `dist/`, `build/`, `.egg-info/` — these are generated files that change constantly and should never be committed.
-- **Virtual environments** — `.venv/` — the installed packages live here; anyone can recreate this by running `uv sync`.
-- **Runtime outputs** — `logs/*`, `data/*`, `runs/mlruns/*`, `runs/artifacts/*`, `results/*` — contents are gitignored but the folders themselves are tracked via `.gitkeep` files, so the folder structure is preserved in the repo without committing the actual data.
-- **`.env`** — never commit secrets.
-- **`configs/config.local.yaml`** — local config overrides with environment-specific paths or secrets.
-- **`docs/build/`** — generated API documentation. Note that only `build/` is ignored: `docs/specs/` and `docs/adr/` are committed on purpose, since they're the written record the AI workflow produces.
-- **Frontend build artifacts** — `frontend/node_modules/`, `frontend/.next/`, `frontend/dist/`, `frontend/.env.local`.
+- **`uv.lock` is not ignored** — lockfiles are committed.
+- **`.github/dependabot.yaml` is ignored** (first lines). Dependabot is opt-in: delete that line to start committing it.
+- **Data, logs, runs, results** keep their folder structure through `.gitkeep` files but ignore the contents. With `use_ml`, `data/raw/.gitkeep` is also kept, because the DVC pipeline's first stage depends on that folder existing.
+- `node_modules/` is ignored anywhere in the tree, `frontend/dist/` and `frontend/.env.local` in product projects.
+- `.env` and `.env.*` are ignored, except `.env.example`.
+- `.DS_Store` and `Thumbs.db` are ignored.
 
-The pattern `folder/*` + `!folder/.gitkeep` is how you track an empty folder in Git (which normally ignores empty directories). The `.gitkeep` file has no content — it's just a placeholder.
+### `.python-version`
 
----
+The interpreter every machine and CI use, so the project doesn't run on 3.12 on one laptop and 3.14 on another. uv does **not** create it by itself: `uv add` and `uv sync` only read it, and it is written by `uv init` or `uv python pin`. So `resolve-latest.sh` runs `uv python pin <python_version>` at generation time. The `python_version` question is the *minimum* version; the pin starts at the same value, and raising it later (`uv python pin 3.14`) is a one-line change. It lives next to `pyproject.toml` (`backend/` in product projects), where uv and CI's `uv sync` look for it.
+
+### `.gitattributes`
+
+Keeps `*.sh` files and the `Makefile` on LF line endings. Without it, a Windows checkout can convert them to CRLF, and Bash then fails with `$'\r': command not found`.
+
+### `.copier-answers.yml`
+
+Generated from `{{ _copier_conf.answers_file }}.jinja` and committed with the project. It records every answer and the template version the project came from, and `copier update` can't work without it (Copier refuses with "cannot obtain old template references"). Don't edit it by hand.
 
 ### `.pre-commit-config.yaml`
 
-Configures pre-commit hooks — scripts that run automatically every time you do `git commit`. If any hook fails, the commit is aborted.
+Git hooks that run automatically on `git commit`. `pre-commit` itself is a dev dependency, installed by `make install`. They are **fast checks only**, so commits stay quick:
 
-```yaml
-repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
-    hooks:
-      - id: ruff
-        args: [--fix]     # auto-fix lint issues before committing
-      - id: ruff-format   # auto-format before committing
+- **Ruff** (`ruff-check` with `--fix`, and `ruff-format`) — lint and format the changed files. Both exclude `.claude/`: it is agent tooling, and in `product` projects the Ruff config lives in `backend/`, so at the repo root Ruff would reformat those scripts (and the code blocks in the skills' Markdown) with its defaults on the first commit.
+- **pre-commit-hooks** — trailing whitespace, end-of-file newline, YAML and TOML validity, merge-conflict markers, leftover `breakpoint()`/`pdb` calls, and `check-added-large-files` (1000 KB), which stops a dataset or model from being committed by accident.
+- **detect-secrets** — scans the commit for secrets (API keys, tokens, private keys). `AGENTS.md` says never to commit secrets; this enforces it. A false positive can be allowed with a `# pragma: allowlist secret` comment on the line, and lockfiles are excluded because they are full of hashes. It is a pure-Python hook: `gitleaks` was tried first, but as a Go hook pre-commit has to download a Go toolchain, which failed on a machine whose Python had no certificate store.
+- **nbstripout** (`use_ml` only) — strips outputs and execution counts from notebooks, which bloat diffs and can leak data.
+- **`typecheck`** — runs `make typecheck`, but only when Python files changed (`^backend/` in product, the package and `tests/` in simple).
+- **`frontend-lint`** (product only) — runs `make lint-frontend` when a commit touches `frontend/`.
 
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-      - id: trailing-whitespace    # removes trailing spaces
-      - id: end-of-file-fixer      # ensures files end with a newline
-      - id: check-yaml             # validates YAML syntax
-      - id: check-toml             # validates TOML syntax
-      - id: check-merge-conflict   # catches unresolved merge conflict markers
-      - id: debug-statements       # catches forgotten breakpoint() or pdb calls
+**There is deliberately no test hook.** `make test` is for you to run when you want it, CI runs it on every push and pull request, and a full test run on every commit made commits slow. (The agent has its own guard, `test_gate.py`, which blocks its commits on a red suite; see [`.claude/hooks/`](#claudehooks).)
 
-  - repo: local
-    hooks:
-      - id: make-test
-        name: Run test suite (make test)
-        entry: make test
-        language: system
-        pass_filenames: false     # run the whole suite, not per-file
-        always_run: true          # even if no Python files are staged
-```
+The hook revisions are bumped to the latest by `pre-commit autoupdate` during generation. They are not covered by Dependabot, so when Dependabot bumps `ruff` in `pyproject.toml`, bump the `ruff-pre-commit` revision to match by hand.
 
-Each remote hook is pinned to a specific version (`rev`) for reproducibility, and runs against only the files you've staged for commit (not the whole repo), so they're fast. After running `make install`, these hooks are registered in `.git/hooks/pre-commit` and run automatically — you don't have to remember to run `make fix` manually.
+### `dvc.yaml` and `.dvcignore` *(use_ml only)*
 
-The `local` `make-test` hook is different: it runs the full test suite on every commit. This is the **human** copy of the test gate. There are deliberately two:
-
-| Gate | Who it guards | Bypassable? |
-|---|---|---|
-| `.pre-commit-config.yaml` → `make-test` | You, committing by hand | Yes — `git commit --no-verify` or `SKIP=make-test git commit` when you have a real reason |
-| `.claude/hooks/test_gate.py` | The agent, committing through Claude Code | No — fires before Bash even runs, so `--no-verify` never comes into play |
-
-Having the same rule in two places means a green test suite is a precondition for a commit no matter who is typing, while still leaving you an escape hatch the agent doesn't get.
-
----
-
-### `dvc.yaml`
-
-Defines your ML pipeline as a directed acyclic graph (DAG) of stages. DVC tracks which files each stage depends on and produces, so it can determine what needs to be re-run when something changes.
+[DVC](https://dvc.org/) versions data and ML pipelines the way Git versions code. `dvc.yaml` describes the pipeline as three stages, each with a command, the files it depends on and the files it produces:
 
 ```yaml
 stages:
   prepare:
-    cmd: python -m my_project.pipeline.prepare
-    deps:
-      - data/raw                          # if raw data changes, re-run prepare
-      - my_project/pipeline/prepare.py    # if the script changes, re-run prepare
-    outs:
-      - data/processed                    # DVC caches and tracks this output
-
+    cmd: uv run python -m my_project.pipeline.prepare     # uv run --project backend python -m app.pipeline.prepare
+    deps: [data/raw, my_project/pipeline/prepare.py]
+    outs: [data/processed]
   train:
-    cmd: python -m my_project.pipeline.train
-    deps:
-      - data/processed
-      - my_project/pipeline/train.py
-      - configs/config.yaml               # config changes trigger a re-train
-    outs:
-      - runs/artifacts/model
-    metrics:
-      - runs/artifacts/metrics.json:
-          cache: false                    # metrics are tracked but not cached
-
+    cmd: uv run python -m my_project.pipeline.train
+    deps: [data/processed, my_project/pipeline/train.py, config/config.yaml]
+    outs: [runs/artifacts/model]
+    metrics: [runs/artifacts/metrics.json: {cache: false}]
   evaluate:
-    cmd: python -m my_project.pipeline.evaluate
-    deps:
-      - data/processed
-      - runs/artifacts/model
-      - my_project/pipeline/evaluate.py
-    metrics:
-      - runs/artifacts/evaluation.json:
-          cache: false
-    plots:
-      - runs/artifacts/plots.csv:
-          cache: false                    # plots are tracked for dvc plots
+    cmd: uv run python -m my_project.pipeline.evaluate
+    deps: [data/processed, runs/artifacts/model, my_project/pipeline/evaluate.py]
+    metrics: [runs/artifacts/evaluation.json: {cache: false}]
+    plots: [runs/artifacts/plots.csv: {cache: false}]
 ```
 
-When you run `dvc repro`, DVC checks which stages are stale (their deps have changed since last run) and re-runs only those. It's like `make` but for ML pipelines, with built-in caching and remote storage. The stages here are placeholders — you'll rename and add stages to match your actual pipeline.
+DVC re-runs only the stages whose dependencies changed, which is what `make dvc-repro` does. The `.dvc/` folder and `dvc.yaml` live at the repo root — DVC tracks `data/` and `runs/`, which are shared by the whole project — while the `dvc` program itself is a dev dependency of the Python project (so in `backend/` for product projects), which is why the commands run through `uv run --project`. The stage modules exist (see [the `pipeline/` package](#pipeline-use_ml-only)) as working placeholders, so `dvc init` followed by `make dvc-repro` runs green on a fresh project. In product projects `uv run --project backend` points uv at the backend environment while the command still runs from the repo root, where `data/` and `runs/` live.
 
-`metrics` files are small JSON files DVC tracks specially so you can compare metrics across Git commits with `dvc metrics diff`. `plots` files (CSV or JSON) can be rendered as charts with `dvc plots show`.
+`.dvcignore` is the DVC equivalent of `.gitignore`: files DVC should not track or hash (virtual environments, Python caches, `logs/`).
 
 ---
 
-### `.dvcignore`
+## `config/`
 
-Same syntax as `.gitignore`, but for DVC. Files listed here are excluded from DVC's dependency tracking. You don't want DVC to watch your virtualenv or cache folders — it would cause false positives and slow down status checks.
+Project-wide configuration, at the repo root in every layout so the backend, the frontend and the pipeline can all read it.
 
----
+### `config/config.yaml`
 
-## `configs/`
+The main configuration file. Starts minimal — the app name and a debug flag — with a commented-out example of what goes in it (an MLflow block with `use_ml`). Use it as the base and override per environment with `config/config.local.yaml`, which is gitignored for local secrets and paths. Nothing in the template reads it yet; `dvc.yaml`'s `train` stage lists it as a dependency, so changing it re-runs training.
 
-### `configs/config.yaml`
-
-The main project configuration file. Written in YAML, which is human-readable and supports comments. The template includes a few common sections as starting points:
-
-```yaml
-app:
-  name: "my_project"
-  debug: false
-```
-
-The convention in this template is: `config.yaml` holds defaults that are safe to commit. `config.local.yaml` (gitignored) holds environment-specific overrides — local paths, credentials, debug flags. Your code loads `config.yaml` and optionally merges `config.local.yaml` on top.
+There is no logging config file here. Logging is Python-only, so it is configured in the Python code that uses it (see `utils/logger.py`) instead of a root-level YAML that the frontend would never read.
 
 ---
 
-### `configs/logging.yaml`
+## The package — `<project_name>/` or `backend/app/`
 
-Configures Python's built-in `logging` module using the standard `dictConfig` format. The logger utility loads this file automatically.
+The importable code. In `simple` projects the folder is named after the project; in `product` projects it is `backend/app/`. The name is `{{ package_name }}` everywhere in the template.
 
-```yaml
-formatters:
-  standard:
-    format: "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d - %(message)s"
-    datefmt: "%Y-%m-%d %H:%M:%S"
-```
+Why `app` inside `backend/` and not the project name: the project name is already the repo name and the `pyproject.toml` name, so repeating it as a folder adds nothing. A fixed name also means the Makefile, CI, scripts and skills never need to know it. (`src` is not an alternative: that is a *layout* convention, `src/<package>/`, not a package name.)
 
-The format string defines how each log line looks. `%(name)s` is the logger name (the module that called `get_logger(__name__)`), `%(lineno)d` is the line number — together they tell you exactly where a log message came from.
+### `__init__.py`
 
-```yaml
-handlers:
-  file:
-    class: logging.handlers.RotatingFileHandler
-    filename: logs/my_project.log
-    maxBytes: 10485760  # 10 MB
-    backupCount: 5
-```
+Marks the folder as a package and holds `__version__`, which the sample test checks.
 
-`RotatingFileHandler` automatically creates a new log file when the current one reaches 10 MB, keeping up to 5 old files (`my_project.log.1` through `my_project.log.5`). This prevents logs from filling up a disk.
+### `constants.py`
 
-```yaml
-loggers:
-  httpx:
-    level: WARNING
-  httpcore:
-    level: WARNING
-```
-
-Third-party libraries that use `logging` will produce output at INFO level by default. Setting them to WARNING silences their routine chatter while still showing errors. Add any other noisy libraries here.
-
----
-
-## `{{project_name}}/` — the package
-
-This folder becomes your importable Python package. Its name is set by the `project_name` variable at generation time.
-
-### `{{project_name}}/__init__.py`
-
-The file that makes a directory a Python package. Rendered from `__init__.py.jinja`: the module docstring is your `description` answer, and it sets `__version__ = "0.1.0"` (which `tests/test_sample.py` asserts against). You can also use it to expose the package's public API by importing from submodules here.
-
-### `{{project_name}}/constants.py`
-
-An empty module (docstring only) reserved for project-wide constants — paths, magic numbers, enum-like values. Keeping them in one place stops them from being redefined across modules, and gives agents an obvious spot to look before inventing a new one.
-
-### `{{project_name}}/utils/__init__.py`
-
-Makes `utils` a subpackage and re-exports `get_logger` so callers can write `from my_project.utils import get_logger` instead of the longer path.
-
-### `{{project_name}}/utils/logger.py`
-
-The shared logging utility. The key design decisions:
+Constants shared across the code. It starts with the project's paths, all derived from one anchor:
 
 ```python
-_configured = False
-
-def _configure_from_yaml() -> bool:
-    """Load logging config from configs/logging.yaml. Returns True on success."""
-    ...
-
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    global _configured
-    if not _configured:
-        _configured = _configure_from_yaml()
-    ...
+ROOT = Path(__file__).resolve().parents[1]      # parents[2] in product projects
+CONFIG_DIR = ROOT / "config"
+LOG_DIR = ROOT / "logs"
+# with use_ml: DATA_DIR, RAW_DIR, PROCESSED_DIR, ARTIFACTS_DIR
 ```
 
-The `_configured` module-level flag ensures `configs/logging.yaml` is loaded exactly once, on the first call to `get_logger`, regardless of how many modules call it. Subsequent calls skip the YAML loading entirely.
+`ROOT` is the repo root, worked out from the file's own location rather than the current directory, so code behaves the same whether you run it from the repo root, from `backend/`, or from a test. `parents[1]` becomes `parents[2]` in product projects because the package sits one folder deeper. A sample test asserts that `ROOT` really is the repo root (it contains the `Makefile`), so a wrong depth is caught immediately.
 
-If the YAML file doesn't exist (e.g. in a test environment or a project that doesn't use it), it falls back to a manual setup: a console handler and a date-stamped file handler in `logs/`. The filename pattern `module_name_2024-01-15.log` means each day gets its own file, making it easy to find logs for a specific date.
+### `utils/logger.py`
 
-The line `logger.propagate = False` is important in the fallback path — without it, log messages would bubble up to Python's root logger and potentially be printed twice.
+The shared logging utility, configured in code:
+
+```python
+def _configure() -> None:
+    # console handler + RotatingFileHandler(logs/<project>.log, 10 MB, 5 backups)
+    # root level from the LOG_LEVEL environment variable (default INFO)
+    # httpx and httpcore turned down to WARNING
+
+def get_logger(name: str) -> logging.Logger:
+    global _configured
+    if not _configured:
+        _configure()
+        _configured = True
+    return logging.getLogger(name)
+```
+
+The module-level `_configured` flag makes the setup run exactly once, on the first call to `get_logger`, however many modules call it. All loggers propagate to the root logger, so one pair of handlers serves the whole process and nothing is printed twice.
+
+Why code and not a YAML file: a `dictConfig` file is worth it when someone has to change handlers or per-module levels without touching code, which is rare for these projects. Meanwhile it is a second source of truth next to a code fallback, a file that needs its relative paths fixed up, and a runtime dependency (`pyyaml`) that nothing else needs. Setting the level from the environment covers the one change people actually make. If a project outgrows it, replace `_configure` with a `dictConfig` call and a file next to the code.
+
+The log folder comes from `constants.py`, so logs always land in the root `logs/` — even for `product` projects whose code runs from `backend/`.
 
 Usage in any module:
 
 ```python
-from my_project.utils.logger import get_logger
-logger = get_logger(__name__)   # __name__ is e.g. "my_project.pipeline.train"
+from my_project.utils.logger import get_logger      # from app.utils.logger in product projects
+logger = get_logger(__name__)
 ```
+
+### `pipeline/` *(use_ml only)*
+
+The three DVC stages as modules — `prepare.py`, `train.py` and `evaluate.py` — each with a `main()` and an `if __name__ == "__main__"` entry point, which is what `dvc.yaml` invokes with `python -m`. They are **placeholders that run**: `prepare` lists `data/raw` and writes an empty `data/processed/dataset.csv`, `train` writes a tiny `model.json` and `metrics.json`, `evaluate` writes `evaluation.json` and `plots.csv`. Each docstring states which inputs it reads and which outputs `dvc.yaml` expects, so replacing the body of `main` with real work keeps the pipeline wired. All paths come from `constants.py`.
 
 ---
 
-## `tests/`
+## Tests
 
-### `tests/__init__.py`
+### `tests/` (simple) and `backend/tests/` (product)
 
-Empty file that makes `tests/` a package. Required for some import patterns in pytest.
+`__init__.py` makes the folder a package; `test_sample.py` checks `__version__` and that `ROOT` is the repo root, and `test_logger.py` that `get_logger` returns a named logger. With `use_ml`, `test_pipeline.py` checks that each stage module imports and exposes `main()` — the contract `dvc.yaml` depends on. Pytest runs with coverage by default, configured in `pyproject.toml`.
 
-### `tests/test_sample.py`
+In `product` projects each part of the system owns its tests instead of one root folder: Python tests in `backend/tests/`, frontend tests next to the frontend code (whatever runner the chosen stack uses, run by `npm run test`), and `infra/tests/` for infrastructure checks. `make test` runs all of them.
 
-A minimal starting test that verifies the package version. More importantly, it serves as a template showing the expected structure of test files. Replace with real tests as the project grows.
+## `frontend/` *(product only)*
 
-Running `make test` invokes pytest with coverage enabled. The output shows a table of which lines in your package are not covered by tests, helping you identify gaps.
+Holds a single file, `decide-frontend-style.md`, and nothing else on purpose. Choosing a frontend (a single-page app, a server-rendered site, a Python UI such as Streamlit?) and a framework depends on the product, so the template doesn't pre-pin tools you may never use.
+
+The guide is written for a person who isn't a frontend specialist, and for an agent helping them. It walks through:
+
+1. **What kind of interface it is** — a table mapping the situation (an app behind a login, a public site that needs search ranking, a content site, a data/ML demo, one small page) to a recommended approach and why.
+2. **Which framework**, with React as the default and the reasons to pick Vue or Svelte instead. TypeScript always.
+3. **Defaults for everything else** — package manager, styling, components, API access, generated API types, tests, linting, dev proxy.
+4. **How to scaffold** — record the decision, delete the guide (scaffolders refuse a non-empty folder), run the framework's own scaffold command, add Vitest, pin exact versions (`.npmrc` with `save-exact=true`, and replacing the scaffold's `^` ranges), commit the lockfile.
+5. **What the rest of the project expects** — the `lint`, `test`, `build` and `dev` npm scripts, uncommenting the npm block in Dependabot, updating `AGENTS.md`.
+
+It ends with a *Decision* section to fill in, which can be copied into an ADR. Until `frontend/package.json` exists, the Makefile targets print a hint and skip, the CI frontend job passes without running anything, and the pre-commit hook does nothing.
+
+## `infra/` *(product only)*
+
+Infrastructure as code — Terraform, Pulumi, Kubernetes manifests and the like. It ships with only `infra/tests/.gitkeep`: the folder and its test location exist from day one, and the contents are yours.
 
 ---
 
@@ -518,45 +417,47 @@ Running `make test` invokes pytest with coverage enabled. The output shows a tab
 
 ### `scripts/setup.sh`
 
-A bootstrap script for setting up a fresh clone from scratch. Key details:
+The project bootstrap for a fresh clone. It installs only what belongs to **this project** — dependencies, the git hook, `.env` — and never anything system-wide. Tools like `uv`, Node, `rtk` and `graphify` are machine-level: they serve every project, so they are installed once per machine (see [`bootstrap-machine.sh`](#bootstrap-machinesh-template-repo-only)), and a project script that installs them would copy that logic into every project, where it drifts and surprises people with side effects outside the repo.
 
 ```bash
 set -euo pipefail
 ```
 
-This line makes the script strict: `-e` exits immediately if any command fails, `-u` treats unset variables as errors, `-o pipefail` catches failures in piped commands. This prevents the script from silently continuing after an error.
+This line makes the script strict: `-e` exits immediately if any command fails, `-u` treats unset variables as errors, `-o pipefail` catches failures in piped commands. The script also changes into the repo root first, so it works from any directory.
 
-```bash
-if ! command -v uv &> /dev/null; then
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  export PATH="$HOME/.local/bin:$PATH"
-fi
-```
+The steps, in order:
 
-Checks if `uv` is installed before trying to install it. The `export PATH` line is needed because the installer modifies `.bashrc` but the current shell session doesn't reload it automatically.
+1. **Check the required tools** — `git`, `make` and `uv` (and `npm` if `frontend/package.json` exists). A missing one stops the script with the install link, instead of installing it.
+2. Run `resolve-latest.sh` (does nothing when `uv.lock` exists), then `uv sync` from the lockfile, and `npm ci` once a frontend exists.
+3. Install the pre-commit hook.
+4. With `use_ml`: `dvc init`, only if `.dvc/` doesn't exist yet (it creates `.dvc/` and edits `.gitignore`, and only needs to happen once).
+5. Copy `.env.example` to `.env` if there is none.
 
-```bash
-if [ ! -d ".dvc" ]; then
-  uv run dvc init
-fi
-```
+It finishes by printing how to activate the environment (`backend/.venv` in product projects). The coloured output is purely cosmetic but makes the script easier to follow.
 
-`dvc init` creates the `.dvc/` directory and adds some files to `.gitignore`. It only needs to run once per project, so this check prevents re-running it on `make setup`.
+### `scripts/resolve-latest.sh`
 
-```bash
-# ── 6. Optional tooling (graphify, rtk) ──
-(uv tool install graphify && graphify install) || warn "graphify install failed -- ..."
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/.../install.sh | sh || warn "rtk install failed -- ..."
-```
+The script Copier runs after copying. Its job is to make a new project start on **current, exactly pinned** dependencies without the template carrying a stale list:
 
-The last step installs two optional tools that make AI agents work better in the repo, and is deliberately **best-effort** — each install is wrapped in `|| warn ...` so a failure prints a warning and the script keeps going instead of aborting under `set -e`:
+1. Makes sure the folder is a git repository (`git init -b main` if needed) — `pre-commit autoupdate` and `pre-commit install` both need one, and CI watches `main`, which `git init` alone would not create on a machine without `init.defaultBranch`.
+2. If there is no `uv.lock`: pins the Python version (`uv python pin`, see [`.python-version`](#python-version)), then `uv add --dev ruff ty pre-commit pytest pytest-cov` (plus `dvc ipykernel` with `use_ml`), run from the Python project folder. With `add-bounds = "exact"` in `pyproject.toml`, uv writes `==` pins, and it writes `uv.lock`.
+3. Runs `pre-commit autoupdate` to bring the hook revisions in `.pre-commit-config.yaml` to the latest.
 
-- [**graphify**](https://github.com/Graphify-Labs/graphify) builds a knowledge graph of the codebase that assistants can query for structure instead of grepping.
-- [**rtk**](https://github.com/rtk-ai/rtk) filters and compresses command output before it reaches an agent's context window, so long `pytest` or `git log` output doesn't burn tokens. The install path is OS-dependent: `brew` on macOS (falling back to the install script), the install script on Linux, `winget` on Windows (Git Bash / MSYS), and a skip-with-warning anywhere else.
+It skips itself once `uv.lock` exists, so it is safe to re-run and `copier update` doesn't redo it. **It can be removed**: once `uv.lock` is committed the script does nothing, so delete it together with the `resolve-latest.sh` line in `setup.sh` whenever you like; the only thing lost is the fallback for a clone that somehow has no lockfile. If `uv` isn't installed it warns and skips, and `setup.sh` (which stops until `uv` exists) picks it up later. The script stays in the project because `setup.sh` calls it. The frontend is not part of it: see [`frontend/`](#frontend-product-only).
 
-Neither is a dependency of the project — they're conveniences for the person (or agent) driving it.
+### `scripts/dev.sh` *(product only)*
 
-The coloured output (`GREEN`, `YELLOW`, `RED`) is purely cosmetic but makes it much easier to follow what the script is doing.
+What `make dev` runs: it starts the backend and the frontend dev servers together and stops both on Ctrl+C (each server runs in its own process group through job control, so stopping one also stops what it started, such as `npm` and the `node` process under it). It ships as a **skeleton**: the two commands, `BACKEND_CMD` (run from `backend/`) and `FRONTEND_CMD` (run from `frontend/`), are empty, with an example next to each (`uv run uvicorn app.main:app --reload`, `npm run dev`), because neither the backend entry point nor the frontend exists yet. An empty command is skipped, and with both empty the script exits with an explanation instead of starting nothing. Fill them in when the stack is chosen; `frontend/decide-frontend-style.md` reminds you.
+
+### `bootstrap-machine.sh` *(template repo only)*
+
+Lives at the root of the template repo, **outside `template/`**, so it is never copied into generated projects. You run it once per machine:
+
+- **Required:** `uv` (installer script) and `copier` (`uv tool install copier`).
+- **Optional, best-effort:** [**graphify**](https://github.com/Graphify-Labs/graphify) builds a knowledge graph of the codebase that assistants can query for structure instead of grepping, and [**rtk**](https://github.com/rtk-ai/rtk) filters and compresses command output before it reaches an agent's context window, so long `pytest` or `git log` output doesn't burn tokens. The `rtk` install path is OS-dependent: `brew` on macOS (falling back to the install script), the install script on Linux, `winget` on Windows (Git Bash / MSYS), and a skip-with-warning anywhere else. Each optional install is wrapped in `|| warn ...`, so a failure prints a warning and the script continues.
+- **Checked, not installed:** `git`, `make` and Node.js. Those belong to your system's package manager.
+
+It is idempotent: anything already installed is skipped. Neither graphify nor rtk is a dependency of any project — they are conveniences for the person (or agent) driving it.
 
 ---
 
@@ -564,121 +465,95 @@ The coloured output (`GREEN`, `YELLOW`, `RED`) is purely cosmetic but makes it m
 
 ### `.github/workflows/ci.yml`
 
-The Continuous Integration workflow. Runs automatically on every push to `main` and every pull request targeting `main`.
+The Continuous Integration workflow. It runs on every push to `main`, every pull request targeting `main`, and on demand (`workflow_dispatch`). It is the same file in every layout.
 
 ```yaml
-steps:
-  - uses: actions/checkout@v4         # checks out your code
+permissions:
+  contents: read
 
-  - name: Install uv
-    uses: astral-sh/setup-uv@v4       # installs uv on the runner
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
-  - name: Set up Python
-    run: uv python install             # installs the Python version from pyproject.toml
-
-  - name: Install dependencies
-    run: uv sync --all-extras          # installs everything including dev deps
-
-  - name: Lint with Ruff
-    run: uv run ruff check .           # fails the build if there are lint errors
-
-  - name: Check formatting
-    run: uv run ruff format --check .  # fails if code isn't formatted (doesn't modify)
-
-  - name: Type-check with ty
-    run: uv run ty check .             # fails on type errors
-
-  - name: Run tests
-    run: uv run pytest                 # runs the test suite with coverage
+jobs:
+  backend:    # install uv (pinned), make sync, make lint-py, make format-check, make typecheck, make test-py
+  frontend:   # detect frontend/package.json; then npm ci, lint, test, build (each step guarded)
 ```
 
-If any step fails, GitHub marks the commit/PR as failed and (optionally) blocks merging. This is the safety net that catches issues before they land on `main`. The four checks are exactly `make lint`, `make format` (in check mode), `make typecheck`, and `make test` — the same commands the agent runs throughout `implement`, so a PR that was built through the workflow should arrive green.
+- **Two jobs run in parallel**, so either can fail without hiding the other.
+- **Steps call `make` targets** instead of repeating commands, so CI and local runs are the same thing. The Makefile knows where Python lives, which is why the Python job is identical for simple and product projects.
+- **The frontend job guards its steps** on the presence of `frontend/package.json`. `hashFiles` isn't available in a job-level `if`, so a first step detects the file and the rest check its output. In a `simple` project every step is skipped and the job passes in seconds, so it is harmless there; a comment in the file says it can be removed from a project that will never have a frontend. in a `product` project it starts running lint, vitest and a production build (which catches type errors the linter doesn't) as soon as `frontend/package.json` exists.
+- **`concurrency` cancels superseded runs** of the same branch or PR, **`permissions: contents: read`** gives the workflow the minimum it needs, and each job has a **`timeout-minutes`**.
+- **Versions are pinned exactly** (actions, `uv`, Node). Dependabot proposes updates for the actions; the `uv` install URL carries a version and needs bumping by hand.
 
----
+### `.github/workflows/markdown.yml` and `markdownlint-config.json`
 
-### `.github/workflows/cd.yml`
+Checks every Markdown file on pushes and PRs that touch one: **style** with markdownlint (rules in `markdownlint-config.json`) and **links** with `markdown-checker`, run through `uvx` with the version pinned (`uvx --from markdown-checker==1.2.2`; the template never uses `pip`) (relative links must point at files that exist; external links only produce a warning, never a failure, because a site being down for a minute shouldn't block a push). `data/`, `node_modules/` and `.claude/` are left out of the style check, and `.claude/` is left out of the link check too (the tracked Markdown files are passed to the checker explicitly, minus `.claude/`): it holds agent prompts, which are written for a model, not styled for markdownlint, and whose internal links are not part of the project's documentation.
 
-The Continuous Deployment workflow. Builds a Docker image and pushes it to GHCR (GitHub Container Registry). Disabled by default — only triggered manually via `workflow_dispatch`.
+The shipped documents (README, CHANGELOG, AGENTS.md, CLAUDE.md, the issue and PR templates, the frontend guide) already pass the rules in every layout, so a fresh project starts green. The config disables line-length and the first-line-heading rule (issue templates start at `##` by design).
 
-```yaml
-- name: Extract metadata (tags & labels)
-  uses: docker/metadata-action@v5
-  with:
-    tags: |
-      type=semver,pattern={{version}}        # v1.2.3
-      type=semver,pattern={{major}}.{{minor}} # v1.2
-      type=sha,prefix=sha-                    # sha-abc1234
-      type=raw,value=latest,enable={{is_default_branch}}
-```
+### `.github/dependabot.yaml`
 
-This automatically generates multiple image tags from a single push. If you push tag `v1.2.3`, your image gets tagged as `v1.2.3`, `v1.2`, `sha-abc1234`, and `latest` — all at once. This is standard practice so downstream services can pin to a specific version or always pull the latest.
+Monthly dependency-update pull requests. **It is gitignored by default** (the first lines of `.gitignore`): delete that line to start committing it, which turns Dependabot on. Because versions are pinned exactly, every update is one reviewed bump.
 
-```yaml
-- name: Build and push
-  with:
-    cache-from: type=gha    # use GitHub Actions cache to speed up builds
-    cache-to: type=gha,mode=max
-```
+It has one entry per ecosystem, and dependencies are grouped so a month's updates don't arrive as dozens of PRs:
 
-Docker layer caching is stored in GitHub Actions' cache, so subsequent builds that haven't changed their dependencies skip the slow `uv sync` layer entirely.
+| Ecosystem | Groups | Layout |
+|---|---|---|
+| `github-actions` | one group with everything | all |
+| `uv` (`/` or `/backend`) | `python-dev-tools` (ruff, ty, pre-commit, pytest, pytest-cov, and dvc, ipykernel with `use_ml`), then `python-runtime` (everything else) | all |
+| `npm` (`/frontend`) | `npm-dev-tools` (devDependencies) and `npm-runtime` (dependencies). Present but **commented out** until `frontend/package.json` exists, because Dependabot errors on a missing manifest | product |
 
-To enable auto-trigger on version tags, uncomment the `push` block and push a tag: `git tag v1.0.0 && git push origin v1.0.0`.
-
----
+Two rules make this work. A dependency belongs to the **first group it matches**, so the named tooling group comes before the catch-all runtime group — the packages `resolve-latest.sh` generates land in `python-dev-tools`, and anything you `uv add` later lands in `python-runtime` (the template starts with no runtime dependencies). And each group only batches **minor and patch** updates; a major update opens its own PR, because it needs a look. For npm the split uses `dependency-type`, so it follows `package.json` without listing names.
 
 ### `.github/PULL_REQUEST_TEMPLATE.md`
 
-Automatically pre-fills the description box when someone opens a pull request on GitHub. The sections are designed to be useful for both human reviewers and AI agents:
+The pre-filled description for every PR, written to be useful to a human reviewer and to an agent alike. It opens with an instruction comment — write for a reviewer who hasn't read the ticket, delete a section that doesn't apply instead of writing "N/A", keep the order, put a conventional commit in the title for a single change, and tick `[x]` only for what was actually run — followed by a `Ticket:` line (and a note for stacked PRs) and the sections:
 
-- **Summary** — forces the author to articulate what and why in prose.
-- **Type of change** — checkboxes that categorise the PR, useful for automated changelog generation.
-- **Changes made** — bullet list of specific changes, precise enough for an agent to use when generating a summary or changelog entry.
-- **Breaking changes** — explicit field so reviewers never have to guess.
-- **How to test** — step-by-step so any reviewer (or agent) can verify the change without prior knowledge.
-- **AI-specific notes** — documents AI involvement, which helps future reviewers understand which parts were human-verified and which weren't.
+| Section | What goes in it |
+|---|---|
+| *Why* | The problem as a user or operator saw it, what it cost, and for a bug the cause with the file or commit that introduced it |
+| *What changes* | One bullet per behaviour, led by the area (**Backend:**, **UI:**, **Infra:**, **CI:**), naming endpoints, statuses, config keys and migrations exactly; ends with **Not touched:** |
+| *For review* | Decisions to agree with or challenge: trade-offs, deviations from the ticket, deliberately removed behaviour |
+| *Deploy impact* | Only the lines that apply: what deploys on merge, migrations, the expected infrastructure diff, config or secrets, anything applied by hand, what breaks, cost or performance |
+| *Verification* | Checkboxes: `[x]` what ran and what it showed, `[ ]` what still has to be checked and how, with exact commands when reproducing takes more than a sentence |
+| *Known gaps* | What this deliberately leaves unfixed, and what fixing it would take |
+| *After merging* | Checks after deploy, data to clean up, follow-up tickets |
 
----
+### `.github/ISSUE_TEMPLATE/`
 
-### `.github/ISSUE_TEMPLATE/bug_report.md`
+Three templates for the "New issue" menu, in the **same style as the PR template** so an issue and the PR that closes it read the same way: an instruction comment at the top (plain words for someone who hasn't seen the conversation, delete what doesn't apply, `[x]` only for what actually happened), a `Related:` line, the PR's section vocabulary, and a *Done when* checklist that becomes the PR's *Verification*.
 
-Pre-fills new issues tagged as bugs. The structured sections — environment, steps to reproduce, expected vs actual behaviour, minimal reproducible example — give agents enough information to diagnose and fix a bug without requiring back-and-forth.
+| Template | Sections | Notes |
+|---|---|---|
+| `bug_report.md` | *What happens*, *Expected*, *How to reproduce*, *Where*, *Impact*, *Suspected cause*, *Done when* | Facts first (the exact error, commands to reproduce); a guessed cause goes in its own optional section, labelled as a guess, so it doesn't steer the fix |
+| `feature_request.md` | *Why*, *What changes*, *For discussion*, *Deploy impact*, *Done when*, *Out of scope* | Describes the problem and the behaviour wanted, not the code; options and trade-offs go in *For discussion* |
+| `task.md` | *Why*, *What to do*, *Where to look*, *For discussion*, *Deploy impact*, *Done when*, *Out of scope* | A unit of work someone can start without asking. *Where to look* (entry points, similar code, constraints) is what lets an agent begin without exploring the whole repo |
 
-### `.github/ISSUE_TEMPLATE/feature_request.md`
+### What is deliberately not included
 
-For proposing new functionality. The **acceptance criteria** section is key for AI-assisted development — it defines "done" in verifiable terms, which an agent can check off as it implements the feature.
-
-### `.github/ISSUE_TEMPLATE/task.md`
-
-The most agent-oriented template. Designed for concrete, bounded units of work:
-
-- **Scope / Out of scope** — explicitly bounds what the agent should and shouldn't touch.
-- **Implementation notes** — optional hints that prevent the agent from choosing a wrong approach.
-- **Acceptance criteria** — verifiable conditions the agent can self-check against.
-- **Definition of done** — standard checklist that applies to every task (lint passes, tests added, changelog updated, PR opened).
+There is **no CD workflow** and no Dockerfile: container images and deployment are specific to each project, so a generic one would be wrong more often than useful. Add them when a project needs them.
 
 ---
 
 ## `.claude/`
 
-Everything under `.claude/` is what makes a generated project *AI-native* rather than merely AI-friendly. `CLAUDE.md` tells the agent what the project is; this folder gives it a process to follow, specialists to delegate to, and guardrails it can't switch off.
+Everything under `.claude/` is what makes a generated project *AI-native* rather than merely AI-friendly. `AGENTS.md` tells the agent what the project is; this folder gives it a process to follow, specialists to delegate to, and guardrails it can't switch off.
 
 ```
 .claude/
-├── settings.json        ← context file + PreToolUse hooks
-├── hooks/               ← two Python scripts Claude Code runs before every Bash call
+├── settings.json        ← registers the hooks
+├── hooks/               ← three Python scripts: two run before every Bash call, one after every Write/Edit
 ├── agents/              ← 7 subagent definitions (+ README roster)
 └── skills/              ← 13 engineering skills + 9 productivity skills (+ README rosters)
 ```
 
-The pieces compose as described in `CLAUDE.md`'s **Development workflow** section. In one line: `/grill-with-docs` → `/spec` → `implement` (`tdd` + `logic-checker` + `code-reviewer`) → `/commit-push` (`changelog-writer` + `readme-updater` + `commit-push`) → PR by hand, with `diagnosing-bugs` → `debugger` as the separate track for things that are already broken, and the two hooks underneath all of it.
+The pieces compose as described in `AGENTS.md`'s **Development workflow** section. In one line: `/grill-with-docs` → `/spec` → `implement` (`tdd` + `logic-checker` + `code-reviewer`) → `/commit-push` (`changelog-writer` + `docs-updater` + `commit-push`) → PR by hand, with `diagnosing-bugs` → `debugger` as the separate track for things that are already broken, and the two hooks underneath all of it.
 
 ### `.claude/settings.json`
 
 ```json
 {
-  "context": {
-    "files": ["CLAUDE.md"]
-  },
   "hooks": {
     "PreToolUse": [
       {
@@ -688,16 +563,26 @@ The pieces compose as described in `CLAUDE.md`'s **Development workflow** sectio
           { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/test_gate.py" }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/format_python.py" }
+        ]
+      }
     ]
   }
 }
 ```
 
-`context.files` tells Claude Code to read `CLAUDE.md` first when it starts a session. The `hooks` block registers two `PreToolUse` hooks that fire on every `Bash` tool call: Claude Code pipes the pending call as JSON to each script's stdin, and a script that exits with code 2 blocks the call (its stderr is shown to the agent as the reason). Both are invoked with `python3`, so it needs to be on the PATH of the shell Claude Code runs in.
+The `hooks` block registers three hooks. Claude Code pipes a JSON description of the tool call to each script's stdin. The two `PreToolUse` hooks fire before every `Bash` call, and a script that exits with code 2 blocks the call (its stderr is shown to the agent as the reason). The `PostToolUse` hook fires after every `Write` or `Edit`, when the file is already written; there, exit code 2 can't undo anything, so its stderr is fed back to the agent as feedback on what it just did. All three are invoked with `python3`, so it needs to be on the PATH of the shell Claude Code runs in. There is no `jq` or other tool to install: the hooks read the JSON themselves.
+
+There is no `context` block: Claude Code loads `CLAUDE.md` on its own, and that file imports `AGENTS.md`.
 
 ### `.claude/hooks/`
 
-Both hooks share a philosophy: **they guard the agent, not you**, so neither has an override. If you need to do one of these things yourself, do it outside Claude Code.
+The first two hooks share a philosophy: **they guard the agent, not you**, so neither has an override. If you need to do one of these things yourself, do it outside Claude Code. The third, `format_python.py`, is not a guard: it never blocks anything.
 
 **`test_gate.py`** — blocks any Bash call containing `git commit` unless `make test` passes first. It matches the command string with a regex (`git ... commit`, including `git -C path commit` and chained `&& git commit`) and deliberately ignores whatever flags follow, so `--no-verify` doesn't help — the hook runs before Bash ever sees the command. Tests run with a 10-minute timeout. Infrastructure problems (no `Makefile`, no `make` or `uv` on PATH, malformed hook input) **fail open** with a warning rather than blocking on something the agent can't fix by writing code.
 
@@ -712,6 +597,13 @@ Both hooks share a philosophy: **they guard the agent, not you**, so neither has
 
 It splits on `&&`, `||`, `;`, `|` to inspect each command in a chain and tokenizes with `shlex`. It's a heuristic safety net for the common careless case, not a shell parser — unusual quoting can slip past it.
 
+**`format_python.py`** — a `PostToolUse` hook that runs `ruff format` on every `.py` file the agent just wrote or edited, so its code arrives formatted without waiting for pre-commit or `make fix`.
+
+- It reads the file path from the hook's JSON with Python, so it needs no `jq`. (An earlier version was a shell one-liner that piped the JSON through `jq` and called `ruff` directly. That needed `jq` installed and Ruff on the global PATH, and `2>/dev/null || true` hid the failure when either was missing, so in a fresh project it quietly did nothing.)
+- It finds the Python project by walking up from the file to the nearest `pyproject.toml` — the repo root in simple projects, `backend/` in product projects — and runs `uv run --project <that folder> ruff format --force-exclude <file>`. So it uses the project's own pinned Ruff and its own config, exactly like `make format`.
+- `--force-exclude` makes it honour the project's Ruff excludes (simple projects exclude `.claude/`). Files outside the project folder, and files with no `pyproject.toml` above them (for example Python scripts under `.claude/` in a product project), are skipped silently.
+- It never blocks. Exit code 2 means Ruff rejected the file, usually a syntax error: Ruff's message goes to the agent so it can fix its edit. Exit code 1 means the hook couldn't run (`uv` missing, a 60-second timeout) and the reason is shown to you, instead of being swallowed.
+
 ### `.claude/agents/`
 
 Subagents are independent Claude contexts the main agent dispatches for a specific job. Each is a Markdown file whose frontmatter sets the model, reasoning effort, and allowed tools; the body is the brief. Using a separate context keeps the main conversation lean and — for the read-only ones — makes them safe to run without touching the working tree. `agents/README.md` is the roster; the summary:
@@ -719,16 +611,16 @@ Subagents are independent Claude contexts the main agent dispatches for a specif
 | Agent | Model / effort | Tools | Job |
 |---|---|---|---|
 | `context-scout` | haiku / medium | read-only | Fact-finding in the repo (code, docs, ADRs, git history). Dispatched by `grilling` and anything that delegates to it whenever a question needs a fact instead of a decision. |
-| `code-reviewer` | sonnet / high | read-only | Fresh-eyes review of a diff for correctness, security, seam discipline, and fit with `CLAUDE.md`/`CONTEXT.md`/ADRs. Reports, doesn't fix. Runs at the end of `implement` and `debugger`. |
+| `code-reviewer` | sonnet / high | read-only | Fresh-eyes review of a diff for correctness, security, seam discipline, and fit with `AGENTS.md`/`CONTEXT.md`/ADRs. Reports, doesn't fix. Runs at the end of `implement` and `debugger`. |
 | `logic-checker` | sonnet / high | read-only | Per-seam check that the implementation matches the spec's *Implementation Decisions* and nothing is missing that the seam's own test wouldn't catch. Runs before that seam's test confirms green. Narrower and earlier than `code-reviewer`. |
 | `changelog-writer` | sonnet / low | edit | Updates `CHANGELOG.md`'s `[Unreleased]` from recent commits; cuts a release section when asked. History only. |
-| `readme-updater` | sonnet / low | edit | Keeps `README.md` and other top-level docs (skills READMEs, etc.) accurate and lean — deletes stale content as readily as it adds. Current-state only. |
+| `docs-updater` | sonnet / low | edit | Keeps `README.md` and other top-level docs (skills READMEs, etc.) accurate and lean — deletes stale content as readily as it adds. Current-state only. |
 | `commit-push` | haiku / low | Bash | Stages, drafts commit message(s) from the diff, commits (split into logical commits when large), pushes once. Only ever triggered by the `/commit-push` skill. Never opens a PR. |
 | `debugger` | opus / high | edit + run | Structured diagnosis loop — repro, minimise, rank hypotheses, instrument, fix with a regression test — up to two rounds before writing up what was tried. Dispatched by `diagnosing-bugs`, one confirmed symptom at a time. Stops short of committing. |
 
 The model-tier choices are deliberate: cheap models for mechanical work (`context-scout`, `commit-push`), stronger ones with high effort for judgement (`code-reviewer`, `logic-checker`), and the strongest with a skeptical brief for debugging, where anchoring on the first plausible cause is the failure mode.
 
-The two hooks apply to subagents exactly as they apply to the main agent — `commit-push` can't commit past a red test suite either.
+The hooks apply to subagents exactly as they apply to the main agent — `commit-push` can't commit past a red test suite either.
 
 ### `.claude/skills/`
 
@@ -748,7 +640,7 @@ A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional 
 | `grilling` | model | The interview engine: questions the user relentlessly about a plan until nothing is silently assumed. Backs `grill-me` and `grill-with-docs`; dispatches `context-scout` when a question needs a fact. |
 | `grill-with-docs` | you (`/grill-with-docs`) | `grilling`, grounded in this repo — writes resolved vocabulary to `CONTEXT.md` and hard decisions to `docs/adr/` as it goes (via `domain-modeling`). |
 | `domain-modeling` | model | Builds and sharpens the project glossary (`CONTEXT.md`, or one per bounded context with a `CONTEXT-MAP.md`) and records ADRs. Ships `references/CONTEXT-FORMAT.md` and `references/ADR-FORMAT.md` as the canonical formats. Also fires on its own when terminology gets sloppy. |
-| `commit-push` | you (`/commit-push`) | Dispatches `changelog-writer` and `readme-updater`, then the `commit-push` subagent. The only way a commit happens in the workflow. |
+| `commit-push` | you (`/commit-push`) | Dispatches `changelog-writer` and `docs-updater`, then the `commit-push` subagent. The only way a commit happens in the workflow. |
 | `claude-handoff` | you (`/claude-handoff`) | Hands the conversation to a detached background Claude Code agent that keeps working unattended — use instead of same-session `implement` when you want to walk away. Hooks still apply. |
 | `walkthrough` | you (`/walkthrough`) | Debugger-style tour of one concrete code path — a screen per step, one real value carried forward as it transforms. For understanding existing code. `references/example.md` shows the format. |
 | `doubt` | you (`/doubt`, `/x`) | Re-examines something the agent just did or claimed with structured skepticism. Ends in one of three verdicts — wrong, right, or genuine tradeoffs — never "it depends". |
@@ -778,25 +670,12 @@ The skills produce durable artefacts outside `.claude/`, all committed:
 - `CONTEXT.md` (project root) — the glossary. Resolved terminology only, no implementation details.
 - `docs/adr/` — one file per architecture decision record.
 - `docs/specs/<type>-<yyyy_mm>-<name>/` — `SPEC.md`, `plan/PLAN.md`, and `reports/NNNN-<implement|debugger>.md`, one folder per piece of work.
-- `CHANGELOG.md` and `README.md` — kept current by `changelog-writer` and `readme-updater` on every `/commit-push`.
+- `CHANGELOG.md` and `README.md` — kept current by `changelog-writer` and `docs-updater` on every `/commit-push`.
 
 None of these exist in a fresh project; `docs/` ships as an empty `.gitkeep` folder and the skills create the subfolders on first use.
 
 ---
 
-## `.dockerignore`
-
-Like `.gitignore` but for Docker builds. When Docker copies files into the build context, it excludes everything listed here. This matters for two reasons: build speed (less data to send to the Docker daemon) and image cleanliness (dev files don't end up in production images).
-
-Key exclusions:
-- `.git/` — the entire git history has no place in an image
-- `data/`, `logs/`, `runs/`, `results/` — mount these as volumes instead
-- `notebooks/`, `frontend/` — built and served separately
-- `.github/`, `.pre-commit-config.yaml`, `.vscode/`, `.idea/` — dev tooling irrelevant in production
-- `docs/`, `*.md` files — documentation (specs, ADRs, generated API docs, `CLAUDE.md`) doesn't belong in a runtime image
-- `.dvc/`, `dvc.yaml` — pipeline definition is a dev-time concern
-
-`.claude/` is not excluded explicitly but every file in it is either `.md` (caught by `*.md`), `.json`, or `.py` under a folder the runtime never imports — harmless, but add `.claude/` here if you want a strictly minimal context.
 
 ---
 
@@ -804,18 +683,20 @@ Key exclusions:
 
 These folders contain only a `.gitkeep` file — an empty placeholder that allows Git to track the folder without any real content. Git doesn't track empty directories, so `.gitkeep` is the convention for "this folder should exist in the repo but its contents are gitignored (or created later)."
 
-| Folder | Purpose |
-|---|---|
-| `data/` | Source and processed data. Contents gitignored, DVC-tracked. Conventionally split into `raw/` (immutable) and `processed/` (regenerated by the `prepare` DVC stage) — create the subfolders when you set up your pipeline; `dvc.yaml` already references them. |
-| `docs/` | Written record of the project. `specs/` and `adr/` are created by the AI workflow and committed; `build/` is generated by `make docs` and gitignored. |
-| `notebooks/` | Jupyter notebooks for exploration and analysis. Not used in the pipeline. |
-| `frontend/src/` | Frontend source code (components, pages, styles). Occasional — the `frontend-design` skill covers the aesthetic side when you get there. |
-| `infra/` | Infrastructure as code — Terraform, Pulumi, Kubernetes manifests, and the like. Occasional. |
-| `logs/` | Runtime log files written by the logger. Rotated automatically. |
-| `runs/mlruns/` | MLflow experiment tracking data — metrics, parameters, run metadata. |
-| `runs/artifacts/` | Trained model files, checkpoints, outputs produced by pipeline stages. |
-| `results/` | Final evaluation outputs, plots, tables — things you'd share or reference in a report. |
-| `scripts/` | One-off utility scripts. `setup.sh` lives here; add migration scripts, data download scripts, etc. |
+| Folder | Layout | Purpose |
+|---|---|---|
+| `config/` | all | Configuration files (not `.gitkeep`; it holds `config.yaml`) |
+| `docs/` | all | Written record of the project. `specs/` and `adr/` are created by the AI workflow and committed; `build/` is generated by `make docs` and gitignored |
+| `logs/` | all | Runtime log files written by the logger. Rotated automatically |
+| `data/raw/` | `use_ml` | Immutable source data. Contents gitignored and DVC-tracked; the `.gitkeep` makes sure the `prepare` stage's dependency exists |
+| `notebooks/` | `use_ml` | Jupyter notebooks for exploration and analysis. Not used in the pipeline |
+| `runs/mlruns/` | `use_ml` | MLflow experiment tracking data — metrics, parameters, run metadata |
+| `runs/artifacts/` | `use_ml` | Trained model files, checkpoints, outputs produced by pipeline stages |
+| `results/` | `use_ml` | Final evaluation outputs, plots, tables — things you'd share or reference in a report |
+| `infra/tests/` | product | Where infrastructure checks go; the rest of `infra/` is yours |
+| `frontend/` | product | Not a `.gitkeep`: holds `decide-frontend-style.md` until you scaffold a frontend |
+
+`data/processed/` is not in this table because the `prepare` stage creates it.
 
 ---
 
@@ -823,20 +704,23 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 
 | File | How often | When |
 |---|---|---|
-| `CLAUDE.md` | Frequently | Every time the project architecture or conventions change — keep it current so the agent stays effective |
+| `AGENTS.md` | Frequently | Every time the project architecture or conventions change — keep it current so the agent stays effective |
 | `CONTEXT.md` | Frequently, via the skills | Whenever terminology gets settled (`/grill-with-docs`, `domain-modeling`) |
 | `docs/specs/` | Per feature / fix | Created by `/spec`, updated by `implement` and `debugger` — you read the reports, you rarely edit them |
 | `docs/adr/` | Per hard decision | Written by `domain-modeling` when a non-obvious, hard-to-reverse choice is made |
 | `CHANGELOG.md` | Per commit, via `changelog-writer` | Whenever something user-facing changes — automated through `/commit-push` |
-| `README.md` | Per commit, via `readme-updater` | Whenever the change makes something in it stale — automated through `/commit-push` |
-| `configs/config.yaml` | Per project | When adding new configuration |
-| `dvc.yaml` | Per pipeline change | When adding or renaming pipeline stages |
-| `pyproject.toml` | Occasionally | When adding dependencies (through `uv add`, never by hand) |
+| `README.md` | Per commit, via `docs-updater` | Whenever the change makes something in it stale — automated through `/commit-push` |
+| `config/config.yaml` | Per project | When adding new configuration |
+| `pipeline/*.py`, `dvc.yaml` | Per pipeline change | Replace the placeholder stage bodies first; edit `dvc.yaml` when adding or renaming stages (`use_ml`) |
+| `pyproject.toml` | Occasionally | When adding dependencies (through `uv add`, which pins exactly; never by hand) |
+| `frontend/decide-frontend-style.md` | Once | When you start the frontend — decide, scaffold, then delete it |
+| `frontend/package.json` | Occasionally | When adding frontend dependencies (through `npm install`, which pins exactly once `.npmrc` is set) |
 | `.claude/skills/` | Occasionally | When you add a project-specific skill — `writing-for-agents` is the guide |
 | `.claude/agents/` | Rarely | When you need a new specialist or want to change a model tier |
+| `scripts/dev.sh` | Once | When the stack is chosen: fill in `BACKEND_CMD` and `FRONTEND_CMD` (product) |
 | `Makefile` | Rarely | When adding new workflow shortcuts |
-| `Dockerfile` | Rarely | When changing runtime requirements |
-| `docker-compose.yml` | Rarely | When adding services |
-| `.github/workflows/` | Rarely | When changing CI/CD behaviour |
-| `.pre-commit-config.yaml` | Rarely | When adding new hooks or updating versions |
-| `.claude/hooks/`, `.claude/settings.json` | Almost never | Only if you want to extend the guardrails — they're meant to stay fixed |
+| `.github/workflows/` | Rarely | When changing CI behaviour |
+| `.github/dependabot.yaml` | Once | To turn Dependabot on (remove its line from `.gitignore`), then rarely |
+| `.pre-commit-config.yaml` | Rarely | When adding hooks, or bumping the Ruff revision to match `pyproject.toml` |
+| `.python-version` | Rarely | When you raise the Python version the project runs on (`uv python pin`) |
+| `.claude/hooks/`, `.claude/settings.json` | Almost never | Only if you want to extend the guardrails or the formatter — they're meant to stay fixed |

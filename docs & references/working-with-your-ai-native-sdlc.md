@@ -26,7 +26,7 @@ For anything beyond a one-line fix:
 2. **`/spec`** — writes `docs/specs/<slug>.md`, agrees the seam(s), creates the branch. Push back if it's inventing scope you didn't ask for; that's exactly the failure mode it's built to avoid, but it's not infallible.
 3. **`implement`** (or `claude-handoff` — see §3) — builds it, seam by seam, looping on its own until the whole spec is done, with `logic-checker` catching "passes the test but isn't what you asked for" and `code-reviewer` catching "works but has a real problem" at the end.
 4. **`/commit-push`** — deliberately, when you decide the work's done. Never automatic.
-5. **`changelog-writer` / `readme-updater`** — keep docs honest, low-stakes, cheap to run often.
+5. **`changelog-writer` / `docs-updater`** — keep docs honest, low-stakes, cheap to run often.
 6. **PR** — still yours, by design.
 
 Something's actually broken instead of not-yet-built: that's `diagnosing-bugs` → `debugger`, a different track entirely, not a variant of the above. Don't debug ad hoc inside an `implement` run — if a failure isn't obviously explained, let it hand off.

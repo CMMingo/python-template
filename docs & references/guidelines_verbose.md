@@ -17,7 +17,7 @@
 
 ### Tooling rules
 
-- Always use scaffolding/init commands to set up projects and packages (`uv init`, `dvc --init`, etc.).
+- Always use scaffolding/init commands to set up projects and packages (`uv init`, `dvc init`, `npm create vite@latest`, etc.).
 - Always use the package manager to add dependencies. Never hand-write dependency entries.
 - Never hand-write auto-generatable config files (lockfiles, tsconfig defaults, etc.) — run the tool and edit the output if needed.
 - All imports at the top of the file. Never import inside functions.
