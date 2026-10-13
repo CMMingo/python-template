@@ -1,64 +1,72 @@
-## Summary
+<!--
+How to fill this in (people and agents alike):
+- Write for a reviewer who hasn't read the ticket. Plain words, short bullets.
+- Delete a section that doesn't apply instead of writing "N/A". Keep the order.
+- Title: a conventional commit for a single change (`fix(backend): ...`),
+  a plain sentence for a multi-commit feature or a release.
+- Checkboxes: [x] means it was actually run, and it says what it showed.
+  [ ] means someone still has to do it. Never tick what didn't run.
+-->
 
-<!-- One paragraph describing WHAT this PR does and WHY. Be specific enough that a reviewer (human or AI) can understand the intent without reading the code. -->
+Ticket: <!-- link to the issue or ticket -->
+<!-- Also link other context here: related PRs, a chat thread, a design doc. -->
 
-## Type of change
+<!-- Stacked on another PR? Put this first:
+> **Stacked on #NNN. Merge that first.** Until it merges, only the last N commits belong here.
+-->
 
-<!-- Check all that apply -->
-- [ ] Bug fix (non-breaking change that fixes an issue)
-- [ ] New feature (non-breaking change that adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to change)
-- [ ] Refactor (no functional change, code quality improvement)
-- [ ] Performance improvement
-- [ ] Documentation update
-- [ ] CI/CD or tooling change
-- [ ] Dependency update
+## Why
 
-## Related issues / context
+<!--
+The problem as a user or operator saw it, and what it cost.
+For a bug: the cause, with the file or commit that introduced it.
+Link the plan, spec or design doc if there is one.
+-->
 
-<!-- Link issues: "Closes #123", "Related to #456" -->
-<!-- Provide any external context: design docs, Slack threads, research papers, etc. -->
+## What changes
 
-## Changes made
+<!--
+One bullet per behaviour change, led by the area it touches (e.g. **Backend:**, **UI:**, **Infra:**, **CI:**).
+Name new endpoints, statuses, config keys and migrations exactly.
+End with **Not touched:** for anything a reviewer might assume changed.
+-->
 
-<!-- Bullet list of concrete changes. One item per logical change. Be precise — this is used for changelog generation and AI review. -->
+## For review
 
-- 
-- 
+<!--
+Decisions to agree with or challenge: trade-offs, deviations from the ticket,
+behaviour that is deliberately removed.
+-->
 
-## Breaking changes
+## Deploy impact
 
-<!-- If this PR introduces breaking changes, describe them explicitly: what breaks, what callers need to update, and migration steps. Write "None" if not applicable. -->
+<!-- Keep only the lines that apply. -->
 
-## How to test
+- **Merging deploys:** <!-- which environment, if any, deploys automatically when this merges -->
+- **Database migration:** <!-- file name, whether it is reversible, and whether it is safe to run before the new code is live -->
+- **Expected infrastructure diff:** <!-- what the plan/preview should show, and what must not change -->
+- **Config or secrets:** <!-- keys or secrets added or changed, and where they must be set -->
+- **Already applied by hand:** <!-- what, in which environment, when; and what a deploy would undo until this merges -->
+- **Breaks:** <!-- anything that stops working without action: a required config key, a changed API contract, existing data the new code can't read. Say what has to be done. -->
+- **Cost or performance:** <!-- cloud cost, latency, memory, startup time, API or token usage. Before/after numbers if you have them. -->
 
-<!-- Step-by-step instructions to verify this PR works correctly. Include setup steps, commands to run, and expected output. -->
+## Verification
 
+- [x] <!-- What you ran and what it showed: new tests, before/after numbers, a local repro. Screenshots for UI changes. -->
+- [x] <!-- Test suites, linters and type checkers that ran, with results. -->
+- [ ] <!-- What wasn't verified, and how a reviewer can check it. -->
+
+<!-- If reproducing it takes more than one sentence, give the exact steps:
 ```bash
-# Example:
-uv run pytest tests/test_your_module.py -v
+<command to set up or run>
+<command to check>   # expected result
 ```
+-->
 
-## Test coverage
+## Known gaps
 
-- [ ] Unit tests added / updated
-- [ ] Integration tests added / updated
-- [ ] Manually tested (describe below)
+<!-- What this deliberately leaves unfixed, and what fixing it would take. -->
 
-<!-- If manually tested, describe the scenario and result -->
+## After merging
 
-## Performance impact
-
-<!-- Does this change affect performance? If so, include before/after benchmarks or reasoning. Write "None" if not applicable. -->
-
-## AI-specific notes
-
-<!-- If this PR was written or reviewed with AI assistance, note it here. Include: model used, what it generated, what was manually reviewed/changed. Helps future AI reviewers understand provenance. -->
-
-## Checklist
-
-- [ ] Code follows project conventions (`make lint` passes)
-- [ ] `CHANGELOG.md` updated (if user-facing change)
-- [ ] Documentation updated (if behaviour changed)
-- [ ] No secrets, credentials, or PII in the diff
-- [ ] Dependent PRs are listed above (if any)
+- [ ] <!-- Checks after deploy, data to clean up, follow-up tickets. -->
