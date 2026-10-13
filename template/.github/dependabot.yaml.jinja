@@ -1,0 +1,61 @@
+# Monthly update pull requests. Ignored by git by default (see .gitignore): delete that line to
+# turn Dependabot on. Versions are pinned exactly (see scripts/resolve-latest.sh), so each update
+# is one reviewed bump.
+#
+# Within an ecosystem a dependency goes to the first group it matches, so the tooling group comes
+# first and the runtime group catches everything else. Minor and patch updates are batched into one
+# pull request per group; major updates get one pull request each, because they need a look.
+version: 2
+updates:
+
+  # The actions used by .github/workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Python ({{ py_root }}pyproject.toml and uv.lock)
+  - package-ecosystem: "uv"
+    directory: "{{ '/backend' if project_layout == 'product' else '/' }}"
+    schedule:
+      interval: "monthly"
+    groups:
+      # The `uv add --dev` set. Ruff is also pinned in .pre-commit-config.yaml: bump that revision by hand.
+      python-dev-tools:
+        patterns:
+          - "ruff"
+          - "ty"
+          - "pre-commit"
+          - "pytest"
+          - "pytest-cov"
+{%- if use_ml %}
+          - "dvc"
+          - "ipykernel"
+{%- endif %}
+        update-types: ["minor", "patch"]
+      # Runtime dependencies: whatever you `uv add` (the template starts with none)
+      python-runtime:
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]
+{%- if project_layout == 'product' %}
+
+  # Frontend: uncomment once frontend/package.json exists (Dependabot errors on a missing manifest).
+  # - package-ecosystem: "npm"
+  #   directory: "/frontend"
+  #   schedule:
+  #     interval: "monthly"
+  #   groups:
+  #     # Everything in devDependencies: the build tool, test runner, linter, @types/*...
+  #     npm-dev-tools:
+  #       dependency-type: "development"
+  #       update-types: ["minor", "patch"]
+  #     # Everything in dependencies (the framework and what you add)
+  #     npm-runtime:
+  #       dependency-type: "production"
+  #       update-types: ["minor", "patch"]
+{%- endif %}
