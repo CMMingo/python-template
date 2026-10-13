@@ -89,6 +89,7 @@ When generation finishes, Copier prints the next steps for the layout you chose 
 - `Makefile` with shortcuts for setup, testing, linting, type-checking and docs (plus DVC with `use_ml`, frontend targets in `product`)
 - `scripts/setup.sh` — project bootstrap for a fresh clone: checks the required tools, installs dependencies and the pre-commit hook, initialises DVC (`use_ml`), creates `.env`. It never installs anything system-wide
 - `.pre-commit-config.yaml` — fast checks only, so commits stay quick: Ruff (not applied to `.claude/`), whitespace and merge-marker hooks, a large-file guard, a secret scan (detect-secrets), `nbstripout` with `use_ml`, and a type-check hook. There is no test hook: run `make test` when you want it (CI runs it on every push)
+- `.vscode/` — shared editor config, rendered per layout: `settings.json` (the right interpreter, `backend/.venv` in product projects; Ruff as formatter with format and fix on save; pytest wired to the project folder), `extensions.json` (Python, Ruff, ty) and `tasks.json` (wrappers over the `make` targets, plus `make dev` in product). Anything else in `.vscode/` stays local
 - `.python-version`, written with `uv python pin` at generation time, so every machine and CI use the same interpreter; `.gitattributes` keeps shell scripts and the Makefile on LF endings
 - `make dev` (product only) — `scripts/dev.sh` starts the backend and frontend together and stops both on Ctrl+C. It ships with the two commands left empty, to fill in once the stack is chosen
 
@@ -140,7 +141,7 @@ bash check-template.sh                 # all four combinations
 bash check-template.sh product:true    # just one (<layout>:<use_ml>)
 ```
 
-For each generated project it checks that the expected files exist and the branch is `main`; that Dependabot's config is gitignored; that lint, format, type-check and tests pass; that a fresh checkout (what CI sees) passes markdownlint and the relative-link check; that `pre-commit run --all-files` passes and leaves the tree clean; that `copier update` merges a later template change and leaves the project's pins, lockfile and hooks alone; that `make dev` refuses to start until configured and stops its servers on Ctrl+C (`product`); and that `dvc repro` runs (`use_ml`). It needs `uv`, `git`, Node.js and network access, and prints a per-project report with the log tail of anything that failed.
+For each generated project it checks that the expected files exist and the branch is `main`; that Dependabot's config is gitignored; that the shared `.vscode/` files are valid, tracked, and point at a real interpreter; that lint, format, type-check and tests pass; that a fresh checkout (what CI sees) passes markdownlint and the relative-link check; that `pre-commit run --all-files` passes and leaves the tree clean; that `copier update` merges a later template change and leaves the project's pins, lockfile and hooks alone; that `make dev` refuses to start until configured and stops its servers on Ctrl+C (`product`); and that `dvc repro` runs (`use_ml`). It needs `uv`, `git`, Node.js and network access, and prints a per-project report with the log tail of anything that failed.
 
 `.github/workflows/test-template.yml` runs the same script on every push and pull request to this repo. Run it locally after any change under `template/` or to `copier.yml`.
 
@@ -198,6 +199,10 @@ python-template/
     ├── README.md.jinja
     ├── CHANGELOG.md
     ├── .gitattributes
+    ├── .vscode/
+    │   ├── settings.json.jinja         ← interpreter path, Ruff on save, pytest
+    │   ├── extensions.json
+    │   └── tasks.json.jinja            ← make targets as VS Code tasks
     ├── {{ _copier_conf.answers_file }}.jinja ← .copier-answers.yml, what makes `copier update` work
     ├── .gitignore.jinja
     ├── .pre-commit-config.yaml.jinja

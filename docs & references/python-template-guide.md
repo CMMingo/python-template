@@ -115,7 +115,7 @@ bash check-template.sh product:true    # one combination (<layout>:<use_ml>)
 Per generated project it checks that:
 
 - the expected files exist (`AGENTS.md`, `CLAUDE.md`, `.copier-answers.yml`, `.gitattributes`, the lockfile and `.python-version`) and the git branch is `main`;
-- Dependabot's config is gitignored;
+- Dependabot's config is gitignored, and the shared `.vscode/` files are valid JSON, tracked, and point at a real interpreter;
 - lint, format check, type check and tests pass, and the frontend targets skip cleanly when there is no frontend;
 - a **fresh checkout** — what CI sees, without `.venv` or caches — passes markdownlint and the relative-link check;
 - `pre-commit run --all-files` passes and leaves the working tree clean, so the first commit in a new project doesn't rewrite anything;
@@ -256,6 +256,7 @@ Rendered from `.gitignore.jinja`, so ML and frontend entries appear only where t
 - **Data, logs, runs, results** keep their folder structure through `.gitkeep` files but ignore the contents. With `use_ml`, `data/raw/.gitkeep` is also kept, because the DVC pipeline's first stage depends on that folder existing.
 - `node_modules/` is ignored anywhere in the tree, `frontend/dist/` and `frontend/.env.local` in product projects.
 - `.env` and `.env.*` are ignored, except `.env.example`.
+- `.vscode/*` is ignored, except the three shared files (`settings.json`, `extensions.json`, `tasks.json`).
 - `.DS_Store` and `Thumbs.db` are ignored.
 
 ### `.python-version`
@@ -265,6 +266,16 @@ The interpreter every machine and CI use, so the project doesn't run on 3.12 on 
 ### `.gitattributes`
 
 Keeps `*.sh` files and the `Makefile` on LF line endings. Without it, a Windows checkout can convert them to CRLF, and Bash then fails with `$'\r': command not found`.
+
+### `.vscode/`
+
+Editor config shared by everyone who opens the project in VS Code. The reason it exists is the `product` layout: the virtual environment lives in `backend/.venv`, and VS Code otherwise looks at the repo root, so it picks the wrong interpreter and Python features don't work until you select the right one by hand. The files are plain JSON (no comments, so the self-test can parse them) and are rendered per layout.
+
+- **`settings.json`** — `python.defaultInterpreterPath` (`backend/.venv` in product projects, the root `.venv` in simple ones; on Windows the interpreter lives under `Scripts/`, so change it there); Ruff as the Python formatter with format, fix and organise-imports on save, so the editor matches `make format` and the `format_python.py` hook; pytest enabled with its working directory set to the Python project and `--no-cov` (coverage interferes with the debugger); Pylance's type checking turned off, since `ty` is the type checker; and excludes for caches, `.venv`, `node_modules` and lockfiles in the explorer and search.
+- **`extensions.json`** — recommends the Python, Ruff and ty extensions. Add the frontend ones once a stack exists.
+- **`tasks.json`** — thin wrappers over the Makefile (Test, Lint, Type-check, Fix, and Dev for product), since the Makefile already knows where Python lives. Test is the default test task and Dev the default build task.
+
+There is no `launch.json`: debug configurations depend on the stack, so they would only be placeholders. The `.gitignore` ignores `.vscode/*` and re-includes only these three files, so personal files in the folder stay local.
 
 ### `.copier-answers.yml`
 
@@ -722,5 +733,6 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 | `.github/workflows/` | Rarely | When changing CI behaviour |
 | `.github/dependabot.yaml` | Once | To turn Dependabot on (remove its line from `.gitignore`), then rarely |
 | `.pre-commit-config.yaml` | Rarely | When adding hooks, or bumping the Ruff revision to match `pyproject.toml` |
+| `.vscode/settings.json` | Rarely | When the interpreter path or the editor behaviour should change (for example on Windows) |
 | `.python-version` | Rarely | When you raise the Python version the project runs on (`uv python pin`) |
 | `.claude/hooks/`, `.claude/settings.json` | Almost never | Only if you want to extend the guardrails or the formatter — they're meant to stay fixed |
