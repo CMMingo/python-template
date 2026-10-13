@@ -52,3 +52,15 @@ package_name:
 _subdirectory: template
 
 # The template's own README.md and docs sit outside `template/`, so they are never copied.
+
+# Dependencies are not listed in pyproject.toml by the template: scripts/resolve-latest.sh resolves the
+# latest versions at generation time and pins them exactly (uv.lock is committed), and bumps the
+# pre-commit hook revisions. Needs network and `copier copy --trust`. The task runs only on `copy`, never on
+# `copier update`, and the script skips itself with a warning when uv is missing
+# (scripts/setup.sh retries later). The frontend is not scaffolded: see frontend/decide-frontend-style.md.
+_tasks:
+  - command: bash scripts/resolve-latest.sh
+    # Only when the project is first generated. During `copier update` Copier regenerates the project in
+    # temporary folders to compute a diff; running this there produced different dependency pins and the
+    # merge then removed the project's own.
+    when: "{{ _copier_operation == 'copy' }}"

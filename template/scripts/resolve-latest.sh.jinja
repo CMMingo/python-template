@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# resolve-latest.sh — resolve the latest dependency versions for a fresh project and pin them exactly
+#
+# Run by Copier when the project is generated, and by setup.sh on a clone that never got this far.
+# Safe to re-run: it skips itself once uv.lock exists.
+#
+# Can be removed: once uv.lock is committed this script does nothing. Delete it together with the
+# `resolve-latest.sh` line in setup.sh whenever you like; the only thing lost is the fallback for a
+# clone that somehow has no lockfile.
+#
+# What it does:
+#   1. Makes sure the folder is a git repository on `main` (pre-commit needs one, and CI watches `main`)
+#   2. Pins the Python version (`uv python pin`, written to .python-version) so every machine and CI
+#      use the same interpreter, then `uv add` the dev dependencies at their latest versions, pinned exactly
+#      (`add-bounds = "exact"` in pyproject.toml keeps later `uv add` calls pinned too)
+#   3. Bumps the pre-commit hook revisions to the latest
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY_DIR="$REPO_ROOT/{{ py_root }}"
+
+YELLOW="\033[1;33m"
+GREEN="\033[0;32m"
+RESET="\033[0m"
+info() { echo -e "${GREEN}[resolve-latest]${RESET} $*"; }
+warn() { echo -e "${YELLOW}[resolve-latest]${RESET} $*"; }
+
+cd "$REPO_ROOT"
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || git init -q -b main
+
+# ── Python ─────────────────────────────────────────────────────────────────────
+if [ -f "$PY_DIR/uv.lock" ]; then
+  info "uv.lock exists -- Python dependencies already resolved."
+elif ! command -v uv >/dev/null 2>&1; then
+  warn "uv not found -- skipped. Install uv and re-run scripts/setup.sh."
+else
+  info "Resolving the latest Python dependencies..."
+  cd "$PY_DIR"
+  uv python pin {{ python_version }}
+  uv add --dev ruff ty pre-commit pytest pytest-cov{{ ' dvc ipykernel' if use_ml else '' }}
+  uv run pre-commit autoupdate --config "$REPO_ROOT/.pre-commit-config.yaml" \
+    || warn "pre-commit autoupdate failed -- hook versions left as generated."
+  cd "$REPO_ROOT"
+fi
