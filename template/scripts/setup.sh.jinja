@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# setup.sh — project bootstrap for a fresh clone of {{ project_name }}
+#
+# Usage:
+#   bash scripts/setup.sh
+#
+# Installs only what belongs to THIS project: dependencies, git hooks and .env.
+# Machine-wide tools (uv, Node, and optional agent tools such as rtk and graphify) are installed
+# once per machine, not by a project: this script checks that the required ones exist and says
+# how to get them when they don't.
+#
+# What it does:
+#   1. Checks the tools the project needs (git, make, uv{{ ', Node' if project_layout == 'product' }})
+#   2. Installs dependencies from the lockfiles (the very first run resolves and pins the latest
+#      versions -- see resolve-latest.sh)
+#   3. Installs the pre-commit git hook
+{%- if use_ml %}
+#   4. Initialises DVC (if not already initialised)
+{%- endif %}
+#   Then: copies .env.example → .env (if .env doesn't exist)
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY_DIR="$REPO_ROOT/{{ py_root }}"
+cd "$REPO_ROOT"
+
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+RED="\033[0;31m"
+RESET="\033[0m"
+
+info()    { echo -e "${GREEN}[setup]${RESET} $*"; }
+warn()    { echo -e "${YELLOW}[setup]${RESET} $*"; }
+error()   { echo -e "${RED}[setup]${RESET} $*" >&2; exit 1; }
+
+# ── 1. Required tools ──────────────────────────────────────────────────────────
+command -v git  &> /dev/null || error "git not found. Install it: https://git-scm.com/downloads"
+command -v make &> /dev/null || error "make not found. Install it with your system's build tools (Xcode CLT on macOS, build-essential on Linux)."
+command -v uv   &> /dev/null || error "uv not found. Install it once per machine: https://docs.astral.sh/uv/getting-started/installation/"
+info "uv $(uv --version)"
+{%- if project_layout == 'product' %}
+if [ -f frontend/package.json ]; then
+  command -v npm &> /dev/null || error "npm not found, but frontend/package.json exists. Install Node.js: https://nodejs.org/"
+else
+  warn "No frontend yet: see frontend/decide-frontend-style.md."
+fi
+{%- endif %}
+
+# ── 2. Dependencies ────────────────────────────────────────────────────────────
+# Does nothing once uv.lock exists. Remove this line together with resolve-latest.sh if you delete it.
+bash "$REPO_ROOT/scripts/resolve-latest.sh"
+(cd "$PY_DIR" && uv sync)
+{%- if project_layout == 'product' %}
+if [ -f frontend/package.json ]; then
+  (cd frontend && npm ci)
+fi
+{%- endif %}
+
+# ── 3. Pre-commit ──────────────────────────────────────────────────────────────
+info "Installing the pre-commit hook..."
+(cd "$PY_DIR" && uv run pre-commit install)
+{% if use_ml %}
+# ── 4. DVC ─────────────────────────────────────────────────────────────────────
+if [ ! -d ".dvc" ]; then
+  info "Initialising DVC..."
+  uv run --project "$PY_DIR" dvc init
+else
+  info "DVC already initialised — skipping."
+fi
+{% endif %}
+# ── .env ───────────────────────────────────────────────────────────────────────
+if [ ! -f ".env" ]; then
+  cp .env.example .env
+  warn ".env created from .env.example — fill in your values."
+else
+  info ".env already exists — skipping."
+fi
+
+info "Setup complete. Activate your environment with:"
+echo ""
+echo "    source {{ py_root }}.venv/bin/activate"
+echo ""
