@@ -5,12 +5,11 @@ Claude Code PreToolUse hook: test-gate.
 Hard-blocks any Bash tool call that runs `git commit` unless `make test`
 passes first. This is a no-override gate for the agent: it fires regardless
 of flags on the git commit invocation itself (including --no-verify), and
-there is no environment variable or flag that skips it. If a human wants to
-commit without running the suite, that's what the *separate*
-.pre-commit-config.yaml gate is for -- that one is a normal pre-commit hook
-and can be bypassed by hand in the usual ways (`git commit --no-verify`,
-`SKIP=make-test git commit`). The two gates are intentionally different:
-this one guards the agent, that one guards you.
+there is no environment variable or flag that skips it. It is the only thing
+that runs the test suite at commit time: the project's .pre-commit-config.yaml
+deliberately has no test hook (commits by hand run only fast checks, and you
+run `make test` when you want the suite; CI runs it on every push). So this
+gate guards the agent, not you.
 
 Reads the PreToolUse hook JSON payload from stdin, matches on
 tool_name == "Bash" and a `git commit` invocation in the command string,
