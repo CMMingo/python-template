@@ -1,0 +1,62 @@
+{%- set product = project_layout == 'product' -%}
+# Commits only run fast checks. The test suite is not a hook: run `make test` when you want it
+# (CI runs it on every push and pull request).
+repos:
+  # Hook revisions are bumped to the latest at generation time (`pre-commit autoupdate`).
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        # Agent tooling is not project code. In product projects Ruff has no config covering it here.
+        exclude: ^\.claude/
+      - id: ruff-format
+        exclude: ^\.claude/
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+
+  # Blocks a commit that contains a secret (API keys, tokens, private keys). A false positive can be
+  # allowed with a `# pragma: allowlist secret` comment on the line. Lockfiles are full of hashes.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        exclude: (^|/)(uv\.lock|package-lock\.json)$
+{%- if use_ml %}
+
+  # Strips outputs and execution counts from notebooks: they bloat diffs and can leak data.
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+{%- endif %}
+
+  - repo: local
+    hooks:
+      - id: typecheck
+        name: Type-check (make typecheck)
+        entry: make typecheck
+        language: system
+        pass_filenames: false
+        # Only when Python code changed.
+        files: {{ '^backend/' if product else '^(' ~ package_name ~ '|tests)/' }}
+{%- if product %}
+
+      - id: frontend-lint
+        name: Lint frontend (make lint-frontend)
+        entry: make lint-frontend
+        language: system
+        pass_filenames: false
+        # Only when a commit touches the frontend.
+        files: ^frontend/
+{%- endif %}
