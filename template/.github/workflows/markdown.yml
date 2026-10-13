@@ -1,0 +1,60 @@
+# Checks every Markdown file in the repo: style (markdownlint, rules in markdownlint-config.json) and
+# links (relative links must point at files that exist; external links are only reported). Runs on
+# pushes and pull requests that touch a .md file. Needs no secrets: it only reads the repo.
+name: Markdown
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.md"
+      - ".github/workflows/markdown*"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.md"
+      - ".github/workflows/markdown*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: markdown-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Markdown linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          config: .github/workflows/markdownlint-config.json
+          # "#" leaves a folder out. data/ holds datasets, not documentation; .claude/ holds
+          # agent prompts, which are written for a model and not styled for markdownlint.
+          globs: |
+            **/*.md
+            #data
+            #.claude
+            #node_modules
+
+  links:
+    name: Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/0.12.23/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Relative links point at files that exist
+        # .claude/ is left out, as in the lint job: agent prompts, not documentation.
+        run: git ls-files -z '*.md' ':!:.claude' | xargs -0 uvx --from markdown-checker==1.2.2 markdown-checker --isolated --func check_broken_paths --report-format console
+      - name: External links still answer (a warning to read, never a failure)
+        # A site being down for a minute is not a reason to block a push.
+        continue-on-error: true
+        run: git ls-files -z '*.md' ':!:.claude' | xargs -0 uvx --from markdown-checker==1.2.2 markdown-checker --isolated --func check_broken_urls --skip-domains localhost,127.0.0.1 --report-format console

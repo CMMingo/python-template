@@ -1,3 +1,10 @@
+# Runs the same checks as `make lint` / `make test` (see the root Makefile) on every push/PR targeting
+# main, so a `git commit --no-verify` or a machine without pre-commit installed can't let something
+# broken slip in. Steps call make targets instead of repeating the commands, so CI and local runs
+# can't drift apart.
+#
+# The Python job is the same in every layout (the Makefile knows where Python lives). The frontend job
+# skips itself unless frontend/package.json exists, so only `product` projects run it.
 name: CI
 
 on:
@@ -5,31 +12,80 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push cancels the run still going for the same branch or pull request.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint-and-test:
+  backend:
+    name: Backend (lint + test)
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Set up Python
-        run: uv python install
+        run: |
+          curl -LsSf https://astral.sh/uv/0.12.23/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        # uv installs the Python version from requires-python if the runner lacks it.
+        run: make sync
 
-      - name: Lint with Ruff
-        run: uv run ruff check .
+      - name: Lint (ruff)
+        run: make lint-py
 
-      - name: Check formatting
-        run: uv run ruff format --check .
+      - name: Check formatting (ruff format)
+        run: make format-check
 
-      - name: Type-check with ty
-        run: uv run ty check .
+      - name: Type-check (ty)
+        run: make typecheck
 
-      - name: Run tests
-        run: uv run pytest
+      - name: Test (pytest)
+        run: make test-py
+
+  # Can be removed in a project that will never have a frontend (every `simple` project). Until
+  # frontend/package.json exists this job only starts a runner and passes.
+  frontend:
+    name: Frontend (lint + test + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Steps are guarded rather than the job: `hashFiles` is not available in job-level `if`.
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Detect frontend
+        id: detect
+        run: |
+          if [ -f frontend/package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-node@v7.1.0
+        if: steps.detect.outputs.present == 'true'
+        with:
+          node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm ci
+
+      - name: Lint (eslint)
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm run lint
+
+      - name: Test (vitest)
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm run test
+
+      - name: Build
+        # Catches type errors eslint doesn't, and confirms the production build still succeeds.
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm run build
