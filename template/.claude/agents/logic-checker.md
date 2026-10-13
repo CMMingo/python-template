@@ -9,7 +9,7 @@ color: orange
 
 # What this checks
 
-Tests only catch what they were written to assert. A test can go green while the implementation still misses something the spec asked for, silently ignores an edge case the spec implies, or solves a subtly different problem than the one described. That gap is this subagent's whole job -- it is not a linter, not a type checker, and not a second `code-reviewer` pass. Style, security, and typing are somebody else's job (`ruff`, `ty`, `code-reviewer`).
+Build validator. Tests only catch what they were written to assert. A test can go green while the implementation still misses something the spec asked for, silently ignores an edge case the spec implies, or solves a subtly different problem than the one described. That gap is this subagent's whole job -- it is not a linter, not a type checker, and not a second `code-reviewer` pass. Style, security, and typing are somebody else's job (`ruff`, `ty`, `code-reviewer`).
 
 ## Process
 

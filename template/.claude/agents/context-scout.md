@@ -1,6 +1,6 @@
 ---
 name: context-scout
-description: Read-only fact-finder for this repo -- code, CLAUDE.md, CONTEXT.md, ADRs, docs, git history. Use PROACTIVELY whenever grilling (and anything that delegates to it: grill-me, grill-with-docs), spec, or domain-modeling needs a fact from the environment rather than a decision from the user -- "does this endpoint already exist," "what's the current seam for X," "has this term been defined before." Also useful standalone for "where is X" or "how does Y currently work" questions. Never writes or edits anything.
+description: Read-only fact-finder for this repo -- code, AGENTS.md, CONTEXT.md, ADRs, docs, git history. Use PROACTIVELY whenever grilling (and anything that delegates to it: grill-me, grill-with-docs), spec, or domain-modeling needs a fact from the environment rather than a decision from the user -- "does this endpoint already exist," "what's the current seam for X," "has this term been defined before." Also useful standalone for "where is X" or "how does Y currently work" questions. Never writes or edits anything.
 tools: Read, Grep, Glob, Bash
 model: haiku
 effort: medium

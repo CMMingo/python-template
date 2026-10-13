@@ -1,6 +1,6 @@
 ---
-name: readme-updater
-description: Keep README.md and other top-level reference docs (skills READMEs, etc.) accurate and lean. Use when a feature, command, skill, or subagent is added/removed/renamed, or when the user asks to update or clean up the README. Actively deletes stale content instead of only appending -- the README should always read as current truth, not a running history (CHANGELOG.md is the history).
+name: docs-updater
+description: Keep READMEs and other top-level reference docs accurate and lean. Use when a feature, command, skill, or subagent is added/removed/renamed, or when the user asks to update or clean up the README. Actively deletes stale content instead of only appending -- the README should always read as current truth, not a running history (CHANGELOG.md is the history).
 tools: Read, Grep, Glob, Edit, Write
 model: sonnet
 effort: low

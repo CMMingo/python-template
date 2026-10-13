@@ -4,7 +4,7 @@ description: A relentless interview to sharpen a plan or design in the context o
 disable-model-invocation: true
 ---
 
-Call the Skill tool with "grilling", then call the Skill tool with "domain-modeling". Run the interview grounded in this repo (read the code, `CLAUDE.md`, and any existing `CONTEXT.md`/`docs/adr/` before asking anything) rather than treating the subject as portable.
+Call the Skill tool with "grilling", then call the Skill tool with "domain-modeling". Run the interview grounded in this repo (read the code, `AGENTS.md`, and any existing `CONTEXT.md`/`docs/adr/` before asking anything) rather than treating the subject as portable.
 
 Use this instead of `/grill-me` whenever you're in a working repo and the change is worth settling before you build it — `grill-me` is for ideas with no codebase behind them yet; this is for a change to one you're standing in.
 
