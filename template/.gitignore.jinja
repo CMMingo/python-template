@@ -74,8 +74,11 @@ config/config.local.yaml
 .env.*
 !.env.example
 
-# IDE
-.vscode/
+# IDE (the shared VS Code files are committed; anything else in .vscode/ stays local)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
 .idea/
 *.swp
 *.swo

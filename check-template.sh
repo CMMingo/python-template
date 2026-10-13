@@ -13,7 +13,8 @@
 #
 # For each generated project it checks that:
 #   - the expected files exist and the branch is `main`
-#   - Dependabot's config is gitignored
+#   - Dependabot's config is gitignored, and the shared .vscode files are valid and tracked
+#     (the interpreter path points at a real virtual environment)
 #   - lint, format, type-check and tests pass (and the frontend targets skip cleanly)
 #   - a fresh checkout passes markdownlint and the relative-link check, as CI will see it
 #   - `pre-commit run --all-files` passes and leaves the tree clean
@@ -69,6 +70,20 @@ check_combo() {
     others=$(git -C "$dir" status --porcelain | grep -vE ' (README\.md|\.copier-answers\.yml)$' || true)
     [ -z "$others" ] || { echo "update touched other files:"; echo "$others"; return 1; }
   }
+  vscode_config_ok() {
+    python3 -I - "$dir" <<'PY' || return 1
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+for name in ("settings", "extensions", "tasks"):
+    json.loads((root / ".vscode" / f"{name}.json").read_text())
+settings = json.loads((root / ".vscode" / "settings.json").read_text())
+interpreter = settings["python.defaultInterpreterPath"].replace("${workspaceFolder}", str(root))
+assert pathlib.Path(interpreter).exists(), f"interpreter not found: {interpreter}"
+PY
+    # The shared files are tracked; anything else in .vscode/ stays local.
+    ! git -C "$dir" check-ignore -q .vscode/settings.json || { echo ".vscode/settings.json is ignored"; return 1; }
+    git -C "$dir" check-ignore -q .vscode/local-only.json || { echo "other .vscode files are not ignored"; return 1; }
+  }
   clean_tree() { [ -z "$(git -C "$dir" status --porcelain)" ] || { git -C "$dir" status --short; return 1; }; }
 
   # Render from a committed, tagged copy of the template, so the update check at the end does not depend
@@ -82,9 +97,11 @@ check_combo() {
   [ -d "$dir" ] || { echo "  (stopped: nothing was rendered)" >>"$res"; return 1; }
 
   step "files exist" expect_files AGENTS.md CLAUDE.md .copier-answers.yml .gitattributes \
-    "$py/pyproject.toml" "$py/uv.lock" "$py/.python-version"
+    "$py/pyproject.toml" "$py/uv.lock" "$py/.python-version" \
+    .vscode/settings.json .vscode/extensions.json .vscode/tasks.json
   step "branch is main" test "$(git -C "$dir" branch --show-current)" = main
   step "dependabot config is gitignored" git -C "$dir" check-ignore -q .github/dependabot.yaml
+  step "VS Code config is valid, with the right interpreter" vscode_config_ok
 
   step "lint, format, types, tests" in_project make lint-py format-check typecheck test-py
 
