@@ -48,9 +48,22 @@ package_name:
   default: "{{ 'app' if project_layout == 'product' else project_name }}"
 
 # ---- internal ----
-# ---- internal ----
 _subdirectory: template
 
+_message_after_copy: |
+  Your project is ready in {{ _copier_conf.dst_path }}
+
+  Next steps:
+    1. cd {{ _copier_conf.dst_path }}
+    2. bash scripts/setup.sh        installs the dependencies and the pre-commit hook, creates .env
+    3. Fill in "Project overview" and "Architecture" in AGENTS.md
+  {%- if project_layout == 'product' %}
+    4. Decide the frontend: frontend/decide-frontend-style.md
+    5. Fill in the two commands in scripts/dev.sh once the stack is chosen (then `make dev`)
+  {%- endif %}
+
+  Dependabot is off by default: remove its line from .gitignore to turn it on.
+  Pull later template changes with `copier update` (needs a clean git tree).
 # The template's own README.md and docs sit outside `template/`, so they are never copied.
 
 # Dependencies are not listed in pyproject.toml by the template: scripts/resolve-latest.sh resolves the
