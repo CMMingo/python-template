@@ -1,0 +1,14 @@
+"""Constants for the project"""
+
+from pathlib import Path
+
+# Anchored to the repo root so paths don't depend on the directory the process starts in.
+ROOT = Path(__file__).resolve().parents[{{ 2 if project_layout == 'product' else 1 }}]
+CONFIG_DIR = ROOT / "config"
+LOG_DIR = ROOT / "logs"
+{%- if use_ml %}
+DATA_DIR = ROOT / "data"
+RAW_DIR = DATA_DIR / "raw"
+PROCESSED_DIR = DATA_DIR / "processed"
+ARTIFACTS_DIR = ROOT / "runs" / "artifacts"
+{%- endif %}

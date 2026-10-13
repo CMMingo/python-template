@@ -1,0 +1,22 @@
+"""Stage 1: turn data/raw into data/processed.
+
+Placeholder: replace the body of `main` with the real cleaning / feature work. The stage contract
+(reads RAW_DIR, writes PROCESSED_DIR) is what dvc.yaml tracks.
+"""
+
+from {{ package_name }}.constants import PROCESSED_DIR, RAW_DIR
+from {{ package_name }}.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+def main() -> None:
+    raw_files = [path for path in RAW_DIR.iterdir() if path.name != ".gitkeep"]
+    logger.info("Found %d raw file(s) in %s", len(raw_files), RAW_DIR)
+
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    (PROCESSED_DIR / "dataset.csv").write_text("id,value\n")
+
+
+if __name__ == "__main__":
+    main()

@@ -4,34 +4,36 @@ version = "0.1.0"
 description = "{{ description }}"
 # authors = [{ name = "Your Name", email = "you@example.com" }]
 requires-python = ">={{ python_version }}"
+{% if project_layout == 'simple' %}
 readme = "README.md"
-{% if open_source_license != "None" %}
-license = { text = "{{ open_source_license }}" }
 {% endif %}
-dependencies = [
-  "pyyaml",
-]
-
-[project.optional-dependencies]
-dev = [
-  "ruff",
-  "ty",
-  "pre-commit",
-  "pytest",
-  "pytest-cov",
-  "dvc",
-]
+{% if open_source_license != "None" %}
+license = "{{ 'GPL-3.0-only' if open_source_license == 'GPL-3.0' else open_source_license }}"
+{% endif %}
+# Dependencies are added with `uv add` (runtime) and `uv add --dev` (tooling), never by hand.
+# The first set is resolved and pinned by scripts/resolve-latest.sh when the project is generated.
+dependencies = []
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# Every `uv add` pins the exact version, so nothing moves between machines; Dependabot proposes bumps.
+add-bounds = "exact"
+
 [tool.hatch.build.targets.wheel]
-packages = ["{{ project_name }}"]
+packages = ["{{ package_name }}"]
+
+[tool.ty.src]
+include = ["{{ package_name }}", "tests"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py{{ python_version | replace('.', '') }}"
+{% if project_layout == 'simple' %}
+extend-exclude = [".claude"]
+{% endif %}
 
 [tool.ruff.lint]
 select = [
@@ -50,4 +52,4 @@ indent-style = "space"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov={{ project_name }} --cov-report=term-missing"
+addopts = "--cov={{ package_name }} --cov-report=term-missing"

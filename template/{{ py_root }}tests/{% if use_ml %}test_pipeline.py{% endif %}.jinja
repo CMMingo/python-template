@@ -1,0 +1,11 @@
+import importlib
+
+import pytest
+
+STAGES = ["prepare", "train", "evaluate"]
+
+
+@pytest.mark.parametrize("stage", STAGES)
+def test_stage_is_runnable_by_dvc(stage):
+    module = importlib.import_module(f"{{ package_name }}.pipeline.{stage}")
+    assert callable(module.main)

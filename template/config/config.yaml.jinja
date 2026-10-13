@@ -8,7 +8,8 @@ app:
 # logging:
 #   level: INFO
 #   dir: logs/
-
+{% if use_ml %}
 # mlflow:
 #   tracking_uri: runs/mlruns
 #   experiment_name: default
+{% endif %}

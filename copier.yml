@@ -1,6 +1,10 @@
 project_name:
   type: str
-  help: Project name (used for the package folder and pyproject.toml)
+  help: Project name (lowercase letters, digits and underscores)
+  validator: >-
+    {% if not (project_name | regex_search('^[a-z][a-z0-9_]*$')) %}
+    Use lowercase letters, digits and underscores, starting with a letter.
+    {% endif %}
 
 description:
   type: str
@@ -18,8 +22,33 @@ open_source_license:
   default: MIT
   choices: [MIT, Apache-2.0, GPL-3.0, None]
 
+project_layout:
+  type: str
+  help: Project layout
+  default: simple
+  choices:
+    "Simple: package and tests at the repo root": simple
+    "Product: backend/, frontend/ and infra/, each with its own tests": product
+
+use_ml:
+  type: bool
+  help: Is this an ML / data project? (adds DVC, notebooks/, data/, runs/, results/)
+  default: false
+
+# ---- derived (never asked) ----
+# Where the Python project lives, and the importable package name.
+py_root:
+  type: str
+  when: false
+  default: "{{ 'backend/' if project_layout == 'product' else '' }}"
+
+package_name:
+  type: str
+  when: false
+  default: "{{ 'app' if project_layout == 'product' else project_name }}"
+
+# ---- internal ----
 # ---- internal ----
 _subdirectory: template
-_exclude:
-  - copier.yml
-  - README.md         # the template's own readme, not the generated project's
+
+# The template's own README.md and docs sit outside `template/`, so they are never copied.

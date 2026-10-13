@@ -1,0 +1,60 @@
+"""
+Shared logger for {{ project_name }}.
+
+Console plus a rotating file in logs/ at the repo root. Set LOG_LEVEL (DEBUG, INFO, ...) in the
+environment to change the level; the default is INFO.
+
+Usage:
+    from {{ package_name }}.utils.logger import get_logger
+
+    logger = get_logger(__name__)
+    logger.info("Starting process")
+    logger.debug("Debug details: %s", some_var)
+"""
+
+import logging
+import os
+import sys
+from logging.handlers import RotatingFileHandler
+
+from {{ package_name }}.constants import LOG_DIR
+
+_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d - %(message)s"
+_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+_NOISY_LIBRARIES = ("httpx", "httpcore")
+
+_configured = False
+
+
+def _configure() -> None:
+    LOG_DIR.mkdir(exist_ok=True)
+    formatter = logging.Formatter(_FORMAT, datefmt=_DATE_FORMAT)
+
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(formatter)
+    file = RotatingFileHandler(
+        LOG_DIR / "{{ project_name }}.log", maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+    )
+    file.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
+    root.addHandler(console)
+    root.addHandler(file)
+
+    for name in _NOISY_LIBRARIES:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Return a logger, configuring logging on the first call.
+
+    Args:
+        name: Logger name. Pass __name__ from the calling module.
+    """
+    global _configured
+
+    if not _configured:
+        _configure()
+        _configured = True
+    return logging.getLogger(name)

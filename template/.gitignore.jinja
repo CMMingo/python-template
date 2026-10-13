@@ -1,3 +1,6 @@
+# Dependabot config: opt-in. Delete this line to commit .github/dependabot.yaml
+.github/dependabot.yaml
+
 # Python
 __pycache__/
 *.py[cod]
@@ -15,9 +18,8 @@ build/
 venv/
 env/
 
-# uv
+# uv (uv.lock is committed)
 .uv/
-uv.lock
 
 # Testing & coverage
 .pytest_cache/
@@ -32,17 +34,23 @@ htmlcov/
 # Ruff
 .ruff_cache/
 
+{% if use_ml %}
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb_checkpoints
-
-# Data (keep structure, ignore contents)
-data/*
-!data/.gitkeep
+{% endif %}
 
 # Logs
 logs/*
 !logs/.gitkeep
+
+{% if use_ml %}
+# Data (keep structure, ignore contents)
+data/*
+!data/.gitkeep
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
 
 # ML runs
 runs/mlruns/*
@@ -53,12 +61,13 @@ runs/artifacts/*
 # Results
 results/*
 !results/.gitkeep
+{% endif %}
 
 # Generated docs
 docs/build/
 
 # Configs with secrets (keep the base, ignore local overrides)
-configs/config.local.yaml
+config/config.local.yaml
 
 # Environment variables
 .env
@@ -74,9 +83,10 @@ configs/config.local.yaml
 # OS
 .DS_Store
 Thumbs.db
+{%- if project_layout == 'product' %}
 
 # Frontend
-frontend/node_modules/
-frontend/.next/
+node_modules/
 frontend/dist/
 frontend/.env.local
+{%- endif %}

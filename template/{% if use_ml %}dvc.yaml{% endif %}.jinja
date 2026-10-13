@@ -9,19 +9,19 @@
 stages:
 
   prepare:
-    cmd: python -m {{ project_name }}.pipeline.prepare
+    cmd: uv run {{ '--project backend ' if project_layout == 'product' else '' }}python -m {{ package_name }}.pipeline.prepare
     deps:
       - data/raw
-      - {{ project_name }}/pipeline/prepare.py
+      - {{ py_root }}{{ package_name }}/pipeline/prepare.py
     outs:
       - data/processed
 
   train:
-    cmd: python -m {{ project_name }}.pipeline.train
+    cmd: uv run {{ '--project backend ' if project_layout == 'product' else '' }}python -m {{ package_name }}.pipeline.train
     deps:
       - data/processed
-      - {{ project_name }}/pipeline/train.py
-      - configs/config.yaml
+      - {{ py_root }}{{ package_name }}/pipeline/train.py
+      - config/config.yaml
     outs:
       - runs/artifacts/model
     metrics:
@@ -29,11 +29,11 @@ stages:
           cache: false
 
   evaluate:
-    cmd: python -m {{ project_name }}.pipeline.evaluate
+    cmd: uv run {{ '--project backend ' if project_layout == 'product' else '' }}python -m {{ package_name }}.pipeline.evaluate
     deps:
       - data/processed
       - runs/artifacts/model
-      - {{ project_name }}/pipeline/evaluate.py
+      - {{ py_root }}{{ package_name }}/pipeline/evaluate.py
     metrics:
       - runs/artifacts/evaluation.json:
           cache: false

@@ -1,0 +1,10 @@
+import logging
+
+from {{ package_name }}.utils.logger import get_logger
+
+
+def test_get_logger_returns_a_named_logger():
+    logger = get_logger("{{ package_name }}.sample")
+
+    assert isinstance(logger, logging.Logger)
+    assert logger.name == "{{ package_name }}.sample"

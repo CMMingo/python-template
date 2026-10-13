@@ -1,0 +1,24 @@
+"""Stage 3: score the trained model and write metrics and plot data.
+
+Placeholder: replace the body of `main` with the real evaluation. Keep writing
+ARTIFACTS_DIR / "evaluation.json" and ARTIFACTS_DIR / "plots.csv", which dvc.yaml tracks.
+"""
+
+import json
+
+from {{ package_name }}.constants import ARTIFACTS_DIR
+from {{ package_name }}.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+def main() -> None:
+    model = json.loads((ARTIFACTS_DIR / "model" / "model.json").read_text())
+    logger.info("Evaluating a model trained on %d row(s)", model["trained_on_rows"])
+
+    (ARTIFACTS_DIR / "evaluation.json").write_text(json.dumps({"score": 0.0}))
+    (ARTIFACTS_DIR / "plots.csv").write_text("step,score\n0,0.0\n")
+
+
+if __name__ == "__main__":
+    main()
