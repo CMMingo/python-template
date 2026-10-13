@@ -1,7 +1,4 @@
 {
-  "context": {
-    "files": ["CLAUDE.md"]
-  },
   "hooks": {
     "PreToolUse": [
       {
@@ -14,6 +11,17 @@
           {
             "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/test_gate.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/format_python.py"
           }
         ]
       }
