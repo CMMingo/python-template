@@ -59,7 +59,7 @@ _message_after_copy: |
     3. Fill in "Project overview" and "Architecture" in AGENTS.md
   {%- if project_layout == 'product' %}
     4. Decide the frontend: frontend/decide-frontend-style.md
-    5. Fill in the two commands in scripts/dev.sh once the stack is chosen (then `make dev`)
+    5. Fill in the two commands in scripts/dev.sh once the stack is chosen (then `just dev`)
   {%- endif %}
 
   Dependabot is off by default: remove its line from .gitignore to turn it on.

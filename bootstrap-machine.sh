@@ -10,10 +10,10 @@
 #
 # Safe to re-run: anything already installed is skipped, and optional tools only warn on failure.
 #
-#   Required:  uv, copier
+#   Required:  uv, copier, just
 #   Optional:  graphify (codebase knowledge graph for AI assistants), rtk (compresses command
 #              output before it reaches an agent's context window)
-#   Checked, not installed: git, make, Node.js (install them with your system's package manager)
+#   Checked, not installed: git, Node.js (install them with your system's package manager)
 
 set -euo pipefail
 
@@ -28,7 +28,6 @@ error() { echo -e "${RED}[machine]${RESET} $*" >&2; exit 1; }
 
 # ── Checked, not installed ─────────────────────────────────────────────────────
 command -v git  &> /dev/null || error "git not found. Install it: https://git-scm.com/downloads"
-command -v make &> /dev/null || warn "make not found -- install your system's build tools (Xcode CLT on macOS, build-essential on Linux)."
 command -v node &> /dev/null || warn "Node.js not found -- only needed for projects with a frontend: https://nodejs.org/"
 
 # ── Required ───────────────────────────────────────────────────────────────────
@@ -44,6 +43,13 @@ if ! command -v copier &> /dev/null; then
   uv tool install copier
 else
   info "copier already installed -- skipping."
+fi
+
+if ! command -v just &> /dev/null; then
+  info "Installing just..."
+  uv tool install rust-just
+else
+  info "just already installed -- skipping."
 fi
 
 # ── Optional ───────────────────────────────────────────────────────────────────

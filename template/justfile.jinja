@@ -1,0 +1,146 @@
+{%- set product = project_layout == 'product' -%}
+{%- set py_dir = 'backend' if product else '.' -%}
+# Run `just` to list every recipe. Python lives in {{ 'backend/' if product else 'the repo root' }}; each Python recipe runs from there, so `just <recipe>` works from anywhere in the repo.
+
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
+[private]
+default:
+    @just --list
+
+# Bootstrap a fresh clone (check tools, install deps and the pre-commit hook{{ ', DVC' if use_ml }}, .env)
+[group('environment')]
+setup:
+    bash scripts/setup.sh
+
+# Install the Python dependencies from the lockfile
+[group('environment')]
+[working-directory: '{{ py_dir }}']
+sync:
+    uv sync
+
+# Install dependencies and the pre-commit git hook
+[group('environment')]
+[working-directory: '{{ py_dir }}']
+install: sync{{ ' install-frontend' if product }}
+    uv run pre-commit install
+{%- if product %}
+
+[private]
+[working-directory: 'frontend']
+install-frontend:
+    {% raw %}{{ if path_exists("frontend/package.json") == "true" { "npm install" } else { "echo no frontend yet: see frontend/decide-frontend-style.md" } }}{% endraw %}
+
+# Start the backend and frontend dev servers (fill in scripts/dev.sh first)
+[group('environment')]
+dev:
+    bash scripts/dev.sh
+{%- endif %}
+
+# Run {{ 'all tests' if product else 'tests' }}
+[group('quality')]
+test: test-py{{ ' test-frontend' if product }}
+
+# Run Python tests with coverage (extra arguments go to pytest)
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+test-py *args:
+    uv run pytest {% raw %}{{args}}{% endraw %}
+
+# Run Python tests without coverage (extra arguments go to pytest)
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+test-fast *args:
+    uv run pytest --no-cov {% raw %}{{args}}{% endraw %}
+{%- if product %}
+
+# Run frontend tests (skipped until frontend/package.json exists)
+[group('quality')]
+[working-directory: 'frontend']
+test-frontend:
+    {% raw %}{{ if path_exists("frontend/package.json") == "true" { "npm run test" } else { "echo no frontend yet: see frontend/decide-frontend-style.md" } }}{% endraw %}
+{%- endif %}
+
+# Run {{ 'every linter and the type check' if product else 'Ruff and the type check' }}
+[group('quality')]
+lint: lint-py typecheck{{ ' lint-frontend' if product }}
+
+# Lint Python with Ruff
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+lint-py:
+    uv run ruff check .
+{%- if product %}
+
+# Lint the frontend (skipped until frontend/package.json exists)
+[group('quality')]
+[working-directory: 'frontend']
+lint-frontend:
+    {% raw %}{{ if path_exists("frontend/package.json") == "true" { "npm run lint" } else { "echo no frontend yet: see frontend/decide-frontend-style.md" } }}{% endraw %}
+{%- endif %}
+
+# Type-check with ty
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+typecheck:
+    uv run ty check
+
+# Format with Ruff
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+format:
+    uv run ruff format .
+
+# Check formatting without changing files (used by CI)
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+format-check:
+    uv run ruff format --check .
+
+# Lint with auto-fix, then format
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+fix:
+    uv run ruff check --fix .
+    uv run ruff format .
+
+# Run pre-commit hooks on all files
+[group('quality')]
+[working-directory: '{{ py_dir }}']
+pre-commit:
+    uv run pre-commit run --all-files
+
+# Generate HTML docs with pdoc into docs/build
+[group('docs')]
+[working-directory: '{{ py_dir }}']
+docs:
+    uv run --with pdoc pdoc --output-dir {{ '../docs/build' if product else 'docs/build' }} {{ package_name }}
+    @echo "Docs generated at docs/build/index.html"
+
+# Serve docs locally with live reload
+[group('docs')]
+[working-directory: '{{ py_dir }}']
+docs-serve:
+    uv run --with pdoc pdoc {{ package_name }}
+{%- if use_ml %}
+
+# Pull data and artifacts from the DVC remote
+[group('dvc')]
+dvc-pull:
+    uv run --project {{ py_dir }} dvc pull
+
+# Push data and artifacts to the DVC remote
+[group('dvc')]
+dvc-push:
+    uv run --project {{ py_dir }} dvc push
+
+# Reproduce the full DVC pipeline
+[group('dvc')]
+dvc-repro:
+    uv run --project {{ py_dir }} dvc repro
+{%- endif %}
+
+# Remove build artifacts and caches
+[group('cleanup')]
+clean:
+    uv run --no-project python scripts/clean.py

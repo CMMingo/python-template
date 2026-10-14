@@ -9,7 +9,8 @@
 #   bash check-template.sh                    # all four combinations
 #   bash check-template.sh product:true       # one or more <layout>:<use_ml> combinations
 #
-# Needs: uv, git, Node.js (for markdownlint) and network access. The combinations run in parallel.
+# Needs: uv, git, Node.js (for markdownlint) and network access. `just` is used if installed,
+# otherwise it is fetched through uvx. The combinations run in parallel.
 #
 # For each generated project it checks that:
 #   - the expected files exist and the branch is `main`
@@ -19,7 +20,7 @@
 #   - a fresh checkout passes markdownlint and the relative-link check, as CI will see it
 #   - `pre-commit run --all-files` passes and leaves the tree clean
 #   - `copier update` merges a later template change and leaves the project's own files alone
-#   - product: `make dev` refuses to start until configured, and stops everything on Ctrl+C
+#   - product: `just dev` refuses to start until configured, and stops everything on Ctrl+C
 #   - use_ml: `dvc repro` runs the placeholder pipeline
 
 set -uo pipefail
@@ -31,6 +32,12 @@ trap 'rm -rf "$WORK"' EXIT
 command -v uv  >/dev/null || { echo "uv not found" >&2; exit 1; }
 command -v git >/dev/null || { echo "git not found" >&2; exit 1; }
 command -v npx >/dev/null || { echo "Node.js (npx) not found" >&2; exit 1; }
+if ! command -v just >/dev/null; then
+  mkdir -p "$WORK/bin"
+  printf '#!/bin/sh\nexec uvx --from rust-just just "$@"\n' > "$WORK/bin/just"
+  chmod +x "$WORK/bin/just"
+  export PATH="$WORK/bin:$PATH"
+fi
 
 export GIT_AUTHOR_NAME=check GIT_AUTHOR_EMAIL=check@example.com
 export GIT_COMMITTER_NAME=check GIT_COMMITTER_EMAIL=check@example.com
@@ -103,17 +110,17 @@ PY
   step "dependabot config is gitignored" git -C "$dir" check-ignore -q .github/dependabot.yaml
   step "VS Code config is valid, with the right interpreter" vscode_config_ok
 
-  step "lint, format, types, tests" in_project make lint-py format-check typecheck test-py
+  step "lint, format, types, tests" in_project just lint-py format-check typecheck test-py
 
   if [ "$layout" = product ]; then
-    step "frontend targets skip cleanly" in_project make lint-frontend test-frontend
+    step "frontend recipes skip cleanly" in_project just lint-frontend test-frontend
     step "scripts/dev.sh exists" expect_files scripts/dev.sh
-    step "make dev refuses to start unconfigured" bash -c "! (cd '$dir' && make dev)"
+    step "just dev refuses to start unconfigured" bash -c "! (cd '$dir' && just dev)"
     step "dev.sh stops its servers when interrupted" dev_stops_servers
   fi
 
   if [ "$ml" = true ]; then
-    step "dvc repro runs the pipeline" in_project bash -c "uv run --project $py dvc init -q && make dvc-repro"
+    step "dvc repro runs the pipeline" in_project bash -c "uv run --project $py dvc init -q && just dvc-repro"
   fi
 
   git -C "$dir" add -A >>"$log" 2>&1

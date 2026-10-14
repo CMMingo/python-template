@@ -4,7 +4,7 @@ Claude Code PostToolUse hook: format Python files after the agent writes them.
 
 Runs `ruff format` on every `.py` file that the Write or Edit tool just
 touched, so the agent's code arrives formatted without waiting for
-pre-commit or `make fix`. Unlike the other two hooks this is not a guardrail:
+pre-commit or `just fix`. Unlike the other two hooks this is not a guardrail:
 it never blocks anything, it only tidies what was written.
 
 The Python project is found by walking up from the edited file to the nearest

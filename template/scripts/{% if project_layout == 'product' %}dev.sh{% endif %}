@@ -2,7 +2,7 @@
 # dev.sh — start the backend and the frontend dev servers together; Ctrl+C stops both
 #
 # Usage:
-#   make dev          (or: bash scripts/dev.sh)
+#   just dev          (or: bash scripts/dev.sh)
 #
 # TEMPLATE: the two commands below are empty until the stack is chosen. Fill them in once
 # the backend entry point exists and the frontend is scaffolded (see

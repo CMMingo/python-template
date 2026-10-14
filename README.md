@@ -12,7 +12,7 @@ One template, two questions (`project_layout`, `use_ml`) cover three kinds of pr
 | ML / data project | `simple`, `use_ml: yes` | The above plus `dvc.yaml` with a runnable placeholder pipeline (`<package>/pipeline/`), `notebooks/`, `data/`, `runs/`, `results/`, DVC and ipykernel |
 | Product | `product` (+ optional `use_ml`) | `backend/` (package `app`, own `pyproject.toml`, `uv.lock` and `tests/`), `frontend/` (empty on purpose: a `decide-frontend-style.md` guide helps you choose the stack later), `infra/` with its own `tests/` |
 
-`config/`, `logs/`, `docs/`, `scripts/` and the ML folders always live at the repo root, shared by every part of the project. Everything else (CI, pre-commit, Makefile, setup script, Dependabot, README, `AGENTS.md`) adapts to the layout.
+`config/`, `logs/`, `docs/`, `scripts/` and the ML folders always live at the repo root, shared by every part of the project. Everything else (CI, pre-commit, justfile, setup script, Dependabot, README, `AGENTS.md`) adapts to the layout.
 
 ---
 
@@ -39,7 +39,7 @@ Copier will ask:
 | `project_layout` | `simple` (package + tests at the root) or `product` (`backend/`, `frontend/`, `infra/`) |
 | `use_ml` | Add DVC, notebooks, data, runs and results folders |
 
-Machine-wide tools are installed once per machine, not per project. `bootstrap-machine.sh` (in this repo, never copied into projects) installs `uv` and `copier`, plus the optional `graphify` and `rtk`, and skips whatever is already there:
+Machine-wide tools are installed once per machine, not per project. `bootstrap-machine.sh` (in this repo, never copied into projects) installs `uv`, `copier` and `just` (with `uv tool install`), plus the optional `graphify` and `rtk`, and skips whatever is already there:
 
 ```bash
 bash bootstrap-machine.sh
@@ -82,26 +82,26 @@ When generation finishes, Copier prints the next steps for the layout you chose 
   - `uv add` resolves the latest dev dependencies (the template has no runtime dependencies); `add-bounds = "exact"` writes `==` pins, and the committed `uv.lock` locks everything underneath
   - `pre-commit autoupdate` bumps the hook revisions
 - Needs network access and `copier copy --trust`. The script skips itself once `uv.lock` exists, and with a warning when `uv` is missing; `scripts/setup.sh` finishes the job later
-- The frontend is **not** scaffolded, so no tool versions are pinned before you know what you need: `frontend/decide-frontend-style.md` walks you through the choice (kind of interface, framework, defaults), the scaffold command, how to pin exact versions, and the scripts (`lint`, `test`, `build`) the Makefile and CI expect. `make` and CI skip the frontend until `frontend/package.json` exists
+- The frontend is **not** scaffolded, so no tool versions are pinned before you know what you need: `frontend/decide-frontend-style.md` walks you through the choice (kind of interface, framework, defaults), the scaffold command, how to pin exact versions, and the scripts (`lint`, `test`, `build`) the justfile and CI expect. `just` and CI skip the frontend until `frontend/package.json` exists
 
 **Dependency management & tooling**
 - `pyproject.toml` configured for **uv**, **Ruff**, **ty** (type checking), and **pytest** with coverage
-- `Makefile` with shortcuts for setup, testing, linting, type-checking and docs (plus DVC with `use_ml`, frontend targets in `product`)
+- `justfile` with shortcuts for setup, testing, linting, type-checking and docs (plus DVC with `use_ml`, frontend recipes in `product`)
 - `scripts/setup.sh` — project bootstrap for a fresh clone: checks the required tools, installs dependencies and the pre-commit hook, initialises DVC (`use_ml`), creates `.env`. It never installs anything system-wide
-- `.pre-commit-config.yaml` — fast checks only, so commits stay quick: Ruff (not applied to `.claude/`), whitespace and merge-marker hooks, a large-file guard, a secret scan (detect-secrets), `nbstripout` with `use_ml`, and a type-check hook. There is no test hook: run `make test` when you want it (CI runs it on every push)
-- `.vscode/` — shared editor config, rendered per layout: `settings.json` (the right interpreter, `backend/.venv` in product projects; Ruff as formatter with format and fix on save; pytest wired to the project folder), `extensions.json` (Python, Ruff, ty) and `tasks.json` (wrappers over the `make` targets, plus `make dev` in product). Anything else in `.vscode/` stays local
-- `.python-version`, written with `uv python pin` at generation time, so every machine and CI use the same interpreter; `.gitattributes` keeps shell scripts and the Makefile on LF endings
-- `make dev` (product only) — `scripts/dev.sh` starts the backend and frontend together and stops both on Ctrl+C. It ships with the two commands left empty, to fill in once the stack is chosen
+- `.pre-commit-config.yaml` — fast checks only, so commits stay quick: Ruff (not applied to `.claude/`), whitespace and merge-marker hooks, a large-file guard, a secret scan (detect-secrets), `nbstripout` with `use_ml`, and a type-check hook. There is no test hook: run `just test` when you want it (CI runs it on every push)
+- `.vscode/` — shared editor config, rendered per layout: `settings.json` (the right interpreter, `backend/.venv` in product projects; Ruff as formatter with format and fix on save; pytest wired to the project folder), `extensions.json` (Python, Ruff, ty) and `tasks.json` (wrappers over the `just` recipes, plus `just dev` in product). Anything else in `.vscode/` stays local
+- `.python-version`, written with `uv python pin` at generation time, so every machine and CI use the same interpreter; `.gitattributes` keeps shell scripts and the justfile on LF endings
+- `just dev` (product only) — `scripts/dev.sh` starts the backend and frontend together and stops both on Ctrl+C. It ships with the two commands left empty, to fill in once the stack is chosen
 
 **Logging**
 - `{{package_name}}/utils/logger.py` — `get_logger(__name__)` configures logging in code on first use: console plus a rotating file in the root `logs/`, level from `LOG_LEVEL`. No YAML to keep in sync, and it works from any working directory
 
 **Data & ML** (`use_ml`)
-- `dvc.yaml` with a `prepare → train → evaluate` pipeline whose stage modules exist as runnable placeholders (`dvc init && make dvc-repro` works on a fresh project), DVC `make` targets
+- `dvc.yaml` with a `prepare → train → evaluate` pipeline whose stage modules exist as runnable placeholders (`dvc init && just dvc-repro` works on a fresh project), DVC `just` recipes
 - `data/`, `runs/mlruns/`, `runs/artifacts/`, `results/`, `notebooks/` (gitignored contents, tracked structure)
 
 **CI**
-- `ci.yml` — Python job (lint, format check, type-check, tests) and a frontend job that only runs when `frontend/package.json` exists; both call `make` targets, so CI and local runs can't drift apart
+- `ci.yml` — Python job (lint, format check, type-check, tests) and a frontend job that only runs when `frontend/package.json` exists; both call `just` recipes, so CI and local runs can't drift apart
 - `markdown.yml` — markdownlint plus a relative-link check (`.claude/` excluded)
 - `.github/dependabot.yaml` — monthly updates for Actions and uv (npm once the frontend exists), grouped into dev-tooling and runtime (minor/patch batched, majors one PR each); **gitignored by default**, remove its line from `.gitignore` to enable it
 - No Docker files: images are specific to each project, so they aren't templated
@@ -110,7 +110,7 @@ When generation finishes, Copier prints the next steps for the layout you chose 
 - `AGENTS.md` — how to work in the project (stack, layout, commands, guidelines), points to `CONTEXT.md`, `docs/ADRs/` and the architecture section of the README, plus a *Development workflow* section mapping how the skills, subagents, and hooks compose end to end. Any agent tool can read it
 - `CLAUDE.md` — imports `AGENTS.md` (`@AGENTS.md`) so Claude Code loads the same brief, since it reads `CLAUDE.md` and not `AGENTS.md`, plus an empty *Claude Code specifics* section for instructions that only apply to Claude Code
 - `.claude/settings.json` — registers the two `PreToolUse` guard hooks and the `PostToolUse` formatter, plus the marketplace and a per-project on/off list (`enabledPlugins`: the `dev`, `learning` and `presenting` groups on, the rest off) for the general-purpose skills
-- `.claude/hooks/` — `test_gate.py` (no `git commit` until `make test` passes, no override), `destructive_guard.py` (blocks `rm -rf` on dangerous paths, `git reset --hard`, force-pushes to `main`, etc.) and `format_python.py` (runs the project's own `ruff format` on every Python file the agent writes; plain Python, no `jq` needed)
+- `.claude/hooks/` — `test_gate.py` (no `git commit` until `just test` passes, no override), `destructive_guard.py` (blocks `rm -rf` on dangerous paths, `git reset --hard`, force-pushes to `main`, etc.) and `format_python.py` (runs the project's own `ruff format` on every Python file the agent writes; plain Python, no `jq` needed)
 - `.claude/agents/` — 7 subagents: `context-scout`, `code-reviewer`, `logic-checker`, `changelog-writer`, `docs-updater`, `commit-push`, `debugger`
 - `.claude/skills/` — 15 skills (`spec`, `implement`, `tdd`, `diagnosing-bugs`, `grill-with-docs`, `grilling`, `domain-modeling`, `commit-push`, `claude-handoff`, `handoff`, `doubt`, `handcraft`, `frontend-design`, `walkthrough`, `wait-what`). General-purpose skills are not copied: they come from the `my-marketplaced-skills` marketplace as groups (`dev`, `learning`, `niche`, `presenting`, `utilities`, `Z-JustInCase`) enabled per project
 - `docs/specs/` and `docs/ADRs/` conventions, and a project glossary (`CONTEXT.md`, shipped as a skeleton) maintained by the skills
@@ -141,7 +141,7 @@ bash check-template.sh                 # all four combinations
 bash check-template.sh product:true    # just one (<layout>:<use_ml>)
 ```
 
-For each generated project it checks that the expected files exist and the branch is `main`; that Dependabot's config is gitignored; that the shared `.vscode/` files are valid, tracked, and point at a real interpreter; that lint, format, type-check and tests pass; that a fresh checkout (what CI sees) passes markdownlint and the relative-link check; that `pre-commit run --all-files` passes and leaves the tree clean; that `copier update` merges a later template change and leaves the project's pins, lockfile and hooks alone; that `make dev` refuses to start until configured and stops its servers on Ctrl+C (`product`); and that `dvc repro` runs (`use_ml`). It needs `uv`, `git`, Node.js and network access, and prints a per-project report with the log tail of anything that failed.
+For each generated project it checks that the expected files exist and the branch is `main`; that Dependabot's config is gitignored; that the shared `.vscode/` files are valid, tracked, and point at a real interpreter; that lint, format, type-check and tests pass; that a fresh checkout (what CI sees) passes markdownlint and the relative-link check; that `pre-commit run --all-files` passes and leaves the tree clean; that `copier update` merges a later template change and leaves the project's pins, lockfile and hooks alone; that `just dev` refuses to start until configured and stops its servers on Ctrl+C (`product`); and that `dvc repro` runs (`use_ml`). It needs `uv`, `git`, Node.js and network access, and prints a per-project report with the log tail of anything that failed.
 
 `.github/workflows/test-template.yml` runs the same script on every push and pull request to this repo. Run it locally after any change under `template/` or to `copier.yml`.
 
@@ -154,7 +154,7 @@ Paths with `{{ }}` or `{% if %}` in their names are rendered by Copier: an empty
 ```text
 python-template/
 ├── copier.yml                          ← questions, derived variables, setup tasks
-├── bootstrap-machine.sh                ← once per machine: uv, copier, graphify, rtk (not copied)
+├── bootstrap-machine.sh                ← once per machine: uv, copier, just, graphify, rtk (not copied)
 ├── check-template.sh                   ← self-test: renders every layout and checks it (not copied)
 ├── .gitignore                          ← template repo's own (.DS_Store, Thumbs.db)
 ├── README.md                           ← this file (not copied)
@@ -183,7 +183,7 @@ python-template/
     ├── scripts/
     │   ├── setup.sh.jinja             ← project bootstrap (checks tools, installs deps and hooks)
     │   ├── resolve-latest.sh.jinja    ← Python version pin and latest, exactly pinned dependencies (run by Copier)
-    │   └── {% if project_layout == 'product' %}dev.sh{% endif %}   ← `make dev` skeleton
+    │   └── {% if project_layout == 'product' %}dev.sh{% endif %}   ← `just dev` skeleton
     ├── .github/
     │   ├── workflows/
     │   │   ├── ci.yml
@@ -193,7 +193,7 @@ python-template/
     │   ├── ISSUE_TEMPLATE/
     │   └── PULL_REQUEST_TEMPLATE.md
     ├── .claude/                        ← settings, hooks, agents, skills
-    ├── Makefile.jinja
+    ├── justfile.jinja
     ├── AGENTS.md.jinja                 ← how to work in the project, for any agent
     ├── CLAUDE.md                       ← imports AGENTS.md; Claude Code specifics
     ├── CONTEXT.md.jinja                ← domain glossary skeleton, filled in by the skills
@@ -203,7 +203,7 @@ python-template/
     ├── .vscode/
     │   ├── settings.json.jinja         ← interpreter path, Ruff on save, pytest
     │   ├── extensions.json
-    │   └── tasks.json.jinja            ← make targets as VS Code tasks
+    │   └── tasks.json.jinja            ← just recipes as VS Code tasks
     ├── {{ _copier_conf.answers_file }}.jinja ← .copier-answers.yml, what makes `copier update` work
     ├── .gitignore.jinja
     ├── .pre-commit-config.yaml.jinja

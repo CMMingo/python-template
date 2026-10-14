@@ -10,7 +10,7 @@
 # how to get them when they don't.
 #
 # What it does:
-#   1. Checks the tools the project needs (git, make, uv{{ ', Node' if project_layout == 'product' }})
+#   1. Checks the tools the project needs (git, uv, just{{ ', Node' if project_layout == 'product' }})
 #   2. Installs dependencies from the lockfiles (the very first run resolves and pins the latest
 #      versions -- see resolve-latest.sh)
 #   3. Installs the pre-commit git hook
@@ -36,8 +36,8 @@ error()   { echo -e "${RED}[setup]${RESET} $*" >&2; exit 1; }
 
 # ── 1. Required tools ──────────────────────────────────────────────────────────
 command -v git  &> /dev/null || error "git not found. Install it: https://git-scm.com/downloads"
-command -v make &> /dev/null || error "make not found. Install it with your system's build tools (Xcode CLT on macOS, build-essential on Linux)."
 command -v uv   &> /dev/null || error "uv not found. Install it once per machine: https://docs.astral.sh/uv/getting-started/installation/"
+command -v just &> /dev/null || error "just not found. Install it once per machine: uv tool install rust-just (or run bootstrap-machine.sh from the template repo)."
 info "uv $(uv --version)"
 {%- if project_layout == 'product' %}
 if [ -f frontend/package.json ]; then

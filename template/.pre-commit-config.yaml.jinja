@@ -1,5 +1,5 @@
 {%- set product = project_layout == 'product' -%}
-# Commits only run fast checks. The test suite is not a hook: run `make test` when you want it
+# Commits only run fast checks. The test suite is not a hook: run `just test` when you want it
 # (CI runs it on every push and pull request).
 repos:
   # Hook revisions are bumped to the latest at generation time (`pre-commit autoupdate`).
@@ -44,8 +44,8 @@ repos:
   - repo: local
     hooks:
       - id: typecheck
-        name: Type-check (make typecheck)
-        entry: make typecheck
+        name: Type-check (just typecheck)
+        entry: just typecheck
         language: system
         pass_filenames: false
         # Only when Python code changed.
@@ -53,8 +53,8 @@ repos:
 {%- if product %}
 
       - id: frontend-lint
-        name: Lint frontend (make lint-frontend)
-        entry: make lint-frontend
+        name: Lint frontend (just lint-frontend)
+        entry: just lint-frontend
         language: system
         pass_filenames: false
         # Only when a commit touches the frontend.

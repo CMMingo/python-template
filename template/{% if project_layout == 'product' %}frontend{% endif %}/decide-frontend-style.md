@@ -72,20 +72,20 @@ Take these unless the project gives a reason to change one.
 
 ## 5. What the rest of the project expects
 
-The Makefile, CI and pre-commit already know about `frontend/`. They start working as soon as
+The justfile, CI and pre-commit already know about `frontend/`. They start working as soon as
 `frontend/package.json` exists, if it has these scripts:
 
 | Script | Used by | Notes |
 | --- | --- | --- |
-| `lint` | `make lint-frontend`, CI, the pre-commit hook | Vite's React template has one. Add `oxlint` for the others |
-| `test` | `make test-frontend`, CI | `vitest run`; add `--passWithNoTests` until the first test exists |
+| `lint` | `just lint-frontend`, CI, the pre-commit hook | Vite's React template has one. Add `oxlint` for the others |
+| `test` | `just test-frontend`, CI | `vitest run`; add `--passWithNoTests` until the first test exists |
 | `build` | CI | Catches type errors the linter doesn't |
 | `dev` | You | Starts the dev server |
 
 Also, once the frontend exists:
 
 - Uncomment the `npm` block in `.github/dependabot.yaml` (it needs a `package.json` to point at).
-- Fill in `BACKEND_CMD` and `FRONTEND_CMD` in `scripts/dev.sh`, so `make dev` starts both servers.
+- Fill in `BACKEND_CMD` and `FRONTEND_CMD` in `scripts/dev.sh`, so `just dev` starts both servers.
 - Add the stack to the *Stack & tools* section of `AGENTS.md`.
 - If the frontend is Python-only (Streamlit, Gradio), skip all of the above and delete `frontend/`.
 

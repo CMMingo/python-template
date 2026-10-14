@@ -1,9 +1,9 @@
-# Runs the same checks as `make lint` / `make test` (see the root Makefile) on every push/PR targeting
+# Runs the same checks as `just lint` / `just test` (see the root justfile) on every push/PR targeting
 # main, so a `git commit --no-verify` or a machine without pre-commit installed can't let something
-# broken slip in. Steps call make targets instead of repeating the commands, so CI and local runs
+# broken slip in. Steps call just recipes instead of repeating the commands, so CI and local runs
 # can't drift apart.
 #
-# The Python job is the same in every layout (the Makefile knows where Python lives). The frontend job
+# The Python job is the same in every layout (the justfile knows where Python lives). The frontend job
 # skips itself unless frontend/package.json exists, so only `product` projects run it.
 name: CI
 
@@ -35,21 +35,24 @@ jobs:
           curl -LsSf https://astral.sh/uv/0.12.23/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: Install just
+        run: uv tool install rust-just==1.58.0
+
       - name: Install dependencies
         # uv installs the Python version from requires-python if the runner lacks it.
-        run: make sync
+        run: just sync
 
       - name: Lint (ruff)
-        run: make lint-py
+        run: just lint-py
 
       - name: Check formatting (ruff format)
-        run: make format-check
+        run: just format-check
 
       - name: Type-check (ty)
-        run: make typecheck
+        run: just typecheck
 
       - name: Test (pytest)
-        run: make test-py
+        run: just test-py
 
   # Can be removed in a project that will never have a frontend (every `simple` project). Until
   # frontend/package.json exists this job only starts a runner and passes.

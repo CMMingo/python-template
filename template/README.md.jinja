@@ -7,6 +7,7 @@
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) — dependency management
+- [just](https://just.systems) — runs the project's commands (`just` lists them); install it with `uv tool install rust-just`
 {%- if project_layout == 'product' %}
 - [Node.js](https://nodejs.org/) — once the frontend exists (see `frontend/decide-frontend-style.md`)
 {%- endif %}
@@ -79,7 +80,7 @@ Dependencies are not written by hand: they were resolved to their latest version
 │   ├── ADRs/                   # architecture decision records (committed -- see domain-modeling)
 │   ├── debug/                  # one report per bug investigation (committed -- see diagnosing-bugs)
 │   ├── clarifications/         # personal notes while learning a topic (gitignored)
-│   └── build/                  # generated API docs from `make docs` (gitignored)
+│   └── build/                  # generated API docs from `just docs` (gitignored)
 {%- if project_layout == 'simple' %}
 ├── pyproject.toml              # dependencies pinned exactly
 ├── uv.lock
@@ -87,7 +88,7 @@ Dependencies are not written by hand: they were resolved to their latest version
 ├── .claude/                    # settings, hooks, agents and skills for Claude Code
 ├── .github/                    # CI workflows, issue and PR templates
 ├── .vscode/                    # shared VS Code settings, extensions and tasks
-├── Makefile
+├── justfile
 ├── AGENTS.md                   # project context for AI assistants
 ├── CLAUDE.md                   # Claude Code entry point: imports AGENTS.md
 ├── CONTEXT.md                  # domain glossary, filled in by the skills
@@ -115,7 +116,7 @@ This project keeps several kinds of documentation, each with its own purpose, sc
 | `docs/specs/<type>_<name>/` | One folder per spec (`<type>` is `feat`, `fix`, or `refactor`): `SPEC.md` (problem, solution, decisions), `PLAN.md` (a seam-organized task breakdown), and `REPORT.md` (what `implement` did, updated in place). All three sit directly in the folder. | Per spec -- that piece of work's own task list and outcome, not shared with any other spec. | `/spec`, `implement` |
 | `docs/debug/` | One report per bug investigation, `<slug>.md`: the hypotheses tested, the diagnosis and the fix. Separate from specs because one investigation can touch several of them. | Per bug. | `debugger` |
 | `docs/clarifications/` | Personal scratch notes for understanding a new topic while working on a task. Gitignored: never committed, and not read by the skills unless you point at a file. | Just you. | You |
-| `docs/build/` | Generated API docs (gitignored). | Rebuilt on demand. | `pdoc`, via `make docs` |
+| `docs/build/` | Generated API docs (gitignored). | Rebuilt on demand. | `pdoc`, via `just docs` |
 
 See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full spec-to-implementation workflow, and [.claude/skills/domain-modeling/SKILL.md](.claude/skills/domain-modeling/SKILL.md) for how `CONTEXT.md` and ADRs get built and maintained.
 
@@ -123,28 +124,28 @@ See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full sp
 
 ## Commands
 
-`make help` lists every target. The ones you will use most:
+`just` lists every recipe. The ones you will use most:
 
 | Command | What it does |
 |---|---|
-| `make setup` | Bootstrap a fresh clone: check the tools, install dependencies and the pre-commit hook{{ ", initialise DVC" if use_ml }}, create `.env` |
+| `just setup` | Bootstrap a fresh clone: check the tools, install dependencies and the pre-commit hook{{ ", initialise DVC" if use_ml }}, create `.env` |
 {%- if project_layout == 'product' %}
-| `make dev` | Start the backend and frontend dev servers (fill in `scripts/dev.sh` once the stack is chosen) |
+| `just dev` | Start the backend and frontend dev servers (fill in `scripts/dev.sh` once the stack is chosen) |
 {%- endif %}
-| `make test` | Run the tests{{ " (backend + frontend)" if project_layout == 'product' }} |
-| `make lint` | Run the linters and the type check |
-| `make fix` | Lint with auto-fix, then format |
-| `make format` | Format the code |
-| `make docs` | Generate HTML docs into `docs/build/` |
+| `just test` | Run the tests{{ " (backend + frontend)" if project_layout == 'product' }} |
+| `just lint` | Run the linters and the type check |
+| `just fix` | Lint with auto-fix, then format |
+| `just format` | Format the code |
+| `just docs` | Generate HTML docs into `docs/build/` |
 
 The complete list, with the fast and per-part variants, is in [AGENTS.md](AGENTS.md).
 {% if use_ml %}
 ### DVC
 
 ```bash
-make dvc-pull    # pull data and artifacts from the DVC remote
-make dvc-repro   # reproduce the full pipeline
-# Any other dvc command has no make target: run it without make, e.g. one stage:
+just dvc-pull    # pull data and artifacts from the DVC remote
+just dvc-repro   # reproduce the full pipeline
+# Any other dvc command has no just recipe: run it directly, e.g. one stage:
 uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc repro <stage_name>
 ```
 {% endif %}
@@ -177,10 +178,10 @@ Logs are written to `logs/` at the repo root (gitignored), whichever directory t
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | push / PR to `main` | Python: `make lint-py`, `make format-check`, `make typecheck`, `make test-py`.{{ ' Frontend: lint, test and build.' if project_layout == 'product' }} Cancels superseded runs |
+| `ci.yml` | push / PR to `main` | Python: `just lint-py`, `just format-check`, `just typecheck`, `just test-py`.{{ ' Frontend: lint, test and build.' if project_layout == 'product' }} Cancels superseded runs |
 | `markdown.yml` | push / PR touching `.md` files | markdownlint and relative-link check |
 
-CI calls the same `make` targets you run locally, so a green `make lint test` means a green pipeline.
+CI calls the same `just` recipes you run locally, so a green `just lint test` means a green pipeline.
 
 `.github/dependabot.yaml` is gitignored by default. To get monthly dependency update PRs, remove its line from `.gitignore` and commit the file. Updates are grouped (dev tooling and runtime, minor and patch batched, one PR per major), and the Ruff version in `.pre-commit-config.yaml` has to be bumped by hand to match `pyproject.toml`.
 
@@ -190,7 +191,7 @@ CI calls the same `make` targets you run locally, so a green `make lint test` me
 
 1. Pick or create an issue using one of the templates in `.github/ISSUE_TEMPLATE/`
 2. Create a branch: `git checkout -b feat/your-feature`
-3. Make your changes — `make fix` before committing. Commits only run fast checks (formatting, large files, secrets, type check); run `make test` when you want the suite, CI runs it on every push
+3. Make your changes — `just fix` before committing. Commits only run fast checks (formatting, large files, secrets, type check); run `just test` when you want the suite, CI runs it on every push
 4. Open a PR using the pull request template
 5. CI must pass before merging
 {%- if open_source_license != "None" %}

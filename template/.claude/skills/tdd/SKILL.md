@@ -99,4 +99,4 @@ Generic TDD guidance assumes exact, deterministic outputs. Model and pipeline co
 
 ## Handoff
 
-Once the agreed seam's behavior is covered, this loop is done -- don't keep it open waiting for a review. If the change is heading to commit or a PR, dispatch the `code-reviewer` subagent for an independent, fresh-eyes pass first; it's read-only and won't touch what you just built. The test-gate hook still enforces `make test` passing before `git commit` either way -- the review is for things a passing suite can't catch (a wrong seam, a security gap, a contradicted ADR).
+Once the agreed seam's behavior is covered, this loop is done -- don't keep it open waiting for a review. If the change is heading to commit or a PR, dispatch the `code-reviewer` subagent for an independent, fresh-eyes pass first; it's read-only and won't touch what you just built. The test-gate hook still enforces `just test` passing before `git commit` either way -- the review is for things a passing suite can't catch (a wrong seam, a security gap, a contradicted ADR).

@@ -2,20 +2,20 @@
 """
 Claude Code PreToolUse hook: test-gate.
 
-Hard-blocks any Bash tool call that runs `git commit` unless `make test`
+Hard-blocks any Bash tool call that runs `git commit` unless `just test`
 passes first. This is a no-override gate for the agent: it fires regardless
 of flags on the git commit invocation itself (including --no-verify), and
 there is no environment variable or flag that skips it. It is the only thing
 that runs the test suite at commit time: the project's .pre-commit-config.yaml
 deliberately has no test hook (commits by hand run only fast checks, and you
-run `make test` when you want the suite; CI runs it on every push). So this
+run `just test` when you want the suite; CI runs it on every push). So this
 gate guards the agent, not you.
 
 Reads the PreToolUse hook JSON payload from stdin, matches on
 tool_name == "Bash" and a `git commit` invocation in the command string,
-then runs `make test` in the project root. Exit code 2 blocks the tool call
+then runs `just test` in the project root. Exit code 2 blocks the tool call
 (stderr is surfaced to the agent as the reason to fix); exit code 0 allows
-it. Infra problems (no Makefile, no make/uv on PATH) fail open with a
+it. Infra problems (no justfile, no just/uv on PATH) fail open with a
 warning rather than blocking on something the agent can't fix by writing
 code.
 """
@@ -52,7 +52,7 @@ def main() -> int:
 
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 
-    for tool in ("make", "uv"):
+    for tool in ("just", "uv"):
         if shutil.which(tool) is None:
             print(
                 f"test-gate: `{tool}` not found on PATH, skipping test gate.",
@@ -60,16 +60,16 @@ def main() -> int:
             )
             return 0
 
-    if not os.path.isfile(os.path.join(project_dir, "Makefile")):
+    if not os.path.isfile(os.path.join(project_dir, "justfile")):
         print(
-            f"test-gate: no Makefile found in {project_dir}, skipping test gate.",
+            f"test-gate: no justfile found in {project_dir}, skipping test gate.",
             file=sys.stderr,
         )
         return 0
 
     try:
         result = subprocess.run(
-            ["make", "test"],
+            ["just", "test"],
             cwd=project_dir,
             capture_output=True,
             text=True,
@@ -77,7 +77,7 @@ def main() -> int:
         )
     except subprocess.TimeoutExpired:
         sys.stderr.write(
-            f"test-gate: blocked `git commit` -- `make test` did not finish "
+            f"test-gate: blocked `git commit` -- `just test` did not finish "
             f"within {TEST_TIMEOUT_SECONDS}s. No override for this gate; "
             "investigate the hang (or run the suite yourself) before "
             "committing.\n"
@@ -88,9 +88,9 @@ def main() -> int:
         return 0
 
     sys.stderr.write(
-        "test-gate: blocked `git commit` -- `make test` failed.\n"
+        "test-gate: blocked `git commit` -- `just test` failed.\n"
         "Fix the failing tests before committing. No override for this gate.\n\n"
-        "--- make test output (tail) ---\n"
+        "--- just test output (tail) ---\n"
     )
     tail = "\n".join((result.stdout + result.stderr).splitlines()[-60:])
     sys.stderr.write(tail + "\n")

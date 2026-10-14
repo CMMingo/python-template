@@ -52,7 +52,7 @@ This is what lets an agent start without exploring the whole repository.
 
 ## Done when
 
-- [ ] <!-- Observable result: "make test passes and X now does Y". -->
+- [ ] <!-- Observable result: "just test passes and X now does Y". -->
 - [ ] <!-- The checks that must be green: tests, linters, type checker. Name them. -->
 - [ ] <!-- Docs touched, if any: README, CHANGELOG, an ADR. -->
 

@@ -46,7 +46,7 @@ simple                      simple + use_ml             product (+ use_ml adds t
 ├── scripts/                ├── data/raw/               ├── frontend/        (decide-frontend-style.md)
 ├── pyproject.toml          ├── runs/                   ├── infra/tests/
 ├── uv.lock                 ├── results/                ├── config/ logs/ docs/ scripts/
-└── Makefile …              ├── dvc.yaml                └── Makefile …
+└── justfile …              ├── dvc.yaml                └── justfile …
                             └── logs/ docs/ scripts/ …
 ```
 
@@ -120,7 +120,7 @@ Per generated project it checks that:
 - a **fresh checkout** — what CI sees, without `.venv` or caches — passes markdownlint and the relative-link check;
 - `pre-commit run --all-files` passes and leaves the working tree clean, so the first commit in a new project doesn't rewrite anything;
 - `copier update` works: the script renders from a committed, tagged copy of the template, adds a change to it, updates the generated project, and checks that the change merged while the pins, lockfile and hooks stayed untouched;
-- `product`: `make dev` refuses to start while `scripts/dev.sh` is unconfigured, and `dev.sh` stops its servers on Ctrl+C;
+- `product`: `just dev` refuses to start while `scripts/dev.sh` is unconfigured, and `dev.sh` stops its servers on Ctrl+C;
 - `use_ml`: `dvc repro` runs the placeholder pipeline.
 
 It prints a per-project report and the log tail of anything that failed. `.github/workflows/test-template.yml` runs it on every push and pull request to the template repo; run it locally after any change under `template/` or to `copier.yml`. It was written after a manual render-and-check routine kept catching real bugs, and its first run caught an invalid `copier.yml`.
@@ -184,7 +184,7 @@ The exact resolved version of every dependency, including transitive ones. It is
 
 ### `README.md`
 
-The project's front page, shown on GitHub and in documentation. Already written as a template that adapts to the layout — it documents the requirements (including the optional `graphify` and `rtk` agent-support tools), the project structure for the chosen layout, all `make` commands in tables, configuration, logging, and CI. DVC sections and the frontend appear only when they apply.
+The project's front page, shown on GitHub and in documentation. Already written as a template that adapts to the layout — it documents the requirements (including the optional `graphify` and `rtk` agent-support tools), the high-level architecture (a section to fill in), the project structure for the chosen layout, the handful of `just` commands you use daily (the complete list lives in `AGENTS.md`, where agents read it, and `just --list` prints it), configuration, logging, and CI. DVC sections and the frontend appear only when they apply.
 
 It also has a **Docs** section that spells out the three kinds of documentation a generated project keeps, because the AI workflow writes to all of them and they're easy to confuse:
 
@@ -195,7 +195,7 @@ It also has a **Docs** section that spells out the three kinds of documentation 
 | `docs/specs/<type>_<name>/` | One folder per piece of work: `SPEC.md`, `PLAN.md`, `REPORT.md`, all directly in the folder | `/spec`, `implement` |
 | `docs/debug/` | One report per bug investigation (`<slug>.md`); separate because one investigation can touch several specs | `debugger` |
 | `docs/clarifications/` | Your own scratch notes for understanding a topic; gitignored, not read by the skills unless you point at a file | you |
-| `docs/build/` | Generated API docs (gitignored) | `pdoc` via `make docs` |
+| `docs/build/` | Generated API docs (gitignored) | `pdoc` via `just docs` |
 
 Fill in the description and update it as the project grows — or let the `docs-updater` subagent do it as part of `/commit-push` (see [`.claude/`](#claude)).
 
@@ -211,7 +211,7 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 ## Domain context            ← pre-filled: where CONTEXT.md, docs/ADRs/ and the architecture live (nothing is imported)
 ## Stack & tools             ← pre-filled for the chosen layout (DVC, frontend only when present)
 ## Project layout            ← pre-filled: where Python, the UI and the shared folders live
-## Common commands           ← pre-filled: every make target, with when to use it
+## Common commands           ← pre-filled: every just recipe, with when to use it
 ## Development workflow      ← pre-filled: how the skills, subagents and hooks compose
 ## General guidelines        ← pre-filled: dev philosophy, tooling rules, constraints
 ## Behavioral guidelines     ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
@@ -230,15 +230,15 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 
 ADRs are deliberately not imported or listed anywhere: there can be dozens, and the value is reading only the ones for the area being changed. `AGENTS.md` names the folder, and `domain-modeling`, `tdd`, `debugger` and `code-reviewer` check it themselves.
 
-The *Project layout* section matters in `product` projects: it tells the agent that Python lives in `backend/` and that tooling runs from there (or through `make`, which does it for you).
+The *Project layout* section matters in `product` projects: it tells the agent that Python lives in `backend/` and that tooling runs from there (or through `just`, which does it for you).
 
 `CLAUDE.md` starts with `@AGENTS.md`, which imports the brief. Claude Code reads `CLAUDE.md` and not `AGENTS.md`, so without that line it would never see the brief. Below the import it has an empty **Claude Code specifics** section for instructions that only make sense for Claude Code (everything else belongs in `AGENTS.md`, so there is one place to keep the content). It is deliberately not a jinja template.
 
-### `Makefile`
+### `justfile`
 
-Short commands for everything you do repeatedly. `make help` lists all targets with descriptions (it parses the `## comment` after each target). The Makefile knows where Python lives through one variable, `PY_DIR` (`.` in simple projects, `backend` in product ones), and every Python recipe starts with `cd $(PY_DIR)`, so `make test` works from any folder in the repo.
+Short commands for everything you do repeatedly. `just` lists every recipe, grouped, with the comment above each one as its description. Each Python recipe runs in the folder where Python lives (`.` in simple projects, `backend/` in product ones) through a `working-directory` attribute, so `just test` works from any folder in the repo. Extra arguments pass straight through: `just test-fast -k name` runs `pytest --no-cov -k name`.
 
-| Target | What it does | Layout |
+| Recipe | What it does | Layout |
 |---|---|---|
 | `setup` | `scripts/setup.sh`: project bootstrap of a fresh clone | all |
 | `dev` | Start the backend and frontend dev servers through `scripts/dev.sh` | product |
@@ -252,9 +252,9 @@ Short commands for everything you do repeatedly. `make help` lists all targets w
 | `pre-commit` | Run all pre-commit hooks on every file | all |
 | `docs`, `docs-serve` | API docs with pdoc into `docs/build/` | all |
 | `dvc-pull`, `dvc-push`, `dvc-repro` | DVC, run through `uv run --project` | `use_ml` |
-| `clean` | Remove caches and build artefacts, skipping `node_modules/` and `.venv/` | all |
+| `clean` | Remove caches and build artefacts (`scripts/clean.py`), skipping `node_modules/` and `.venv/` | all |
 
-CI calls these same targets (`lint-py`, `format-check`, `typecheck`, `test-py`), so the pipeline and your terminal can't drift apart. The tooling targets exist as separate names so CI can run them as separate steps and see which one failed.
+CI calls these same recipes (`lint-py`, `format-check`, `typecheck`, `test-py`), so the pipeline and your terminal can't drift apart. The tooling recipes exist as separate names so CI can run them as separate steps and see which one failed.
 
 ### `.env.example`
 
@@ -278,15 +278,15 @@ The interpreter every machine and CI use, so the project doesn't run on 3.12 on 
 
 ### `.gitattributes`
 
-Keeps `*.sh` files and the `Makefile` on LF line endings. Without it, a Windows checkout can convert them to CRLF, and Bash then fails with `$'\r': command not found`.
+Keeps `*.sh` files and the `justfile` on LF line endings. Without it, a Windows checkout can convert them to CRLF, and Bash then fails with `$'\r': command not found`.
 
 ### `.vscode/`
 
 Editor config shared by everyone who opens the project in VS Code. The reason it exists is the `product` layout: the virtual environment lives in `backend/.venv`, and VS Code otherwise looks at the repo root, so it picks the wrong interpreter and Python features don't work until you select the right one by hand. The files are plain JSON (no comments, so the self-test can parse them) and are rendered per layout.
 
-- **`settings.json`** — `python.defaultInterpreterPath` (`backend/.venv` in product projects, the root `.venv` in simple ones; on Windows the interpreter lives under `Scripts/`, so change it there); Ruff as the Python formatter with format, fix and organise-imports on save, so the editor matches `make format` and the `format_python.py` hook; pytest enabled with its working directory set to the Python project and `--no-cov` (coverage interferes with the debugger); Pylance's type checking turned off, since `ty` is the type checker; and excludes for caches, `.venv`, `node_modules` and lockfiles in the explorer and search.
+- **`settings.json`** — `python.defaultInterpreterPath` (`backend/.venv` in product projects, the root `.venv` in simple ones; on Windows the interpreter lives under `Scripts/`, so change it there); Ruff as the Python formatter with format, fix and organise-imports on save, so the editor matches `just format` and the `format_python.py` hook; pytest enabled with its working directory set to the Python project and `--no-cov` (coverage interferes with the debugger); Pylance's type checking turned off, since `ty` is the type checker; and excludes for caches, `.venv`, `node_modules` and lockfiles in the explorer and search.
 - **`extensions.json`** — recommends the Python, Ruff and ty extensions. Add the frontend ones once a stack exists.
-- **`tasks.json`** — thin wrappers over the Makefile (Test, Lint, Type-check, Fix, and Dev for product), since the Makefile already knows where Python lives. Test is the default test task and Dev the default build task.
+- **`tasks.json`** — thin wrappers over the justfile (Test, Lint, Type-check, Fix, and Dev for product), since the justfile already knows where Python lives. Test is the default test task and Dev the default build task.
 
 There is no `launch.json`: debug configurations depend on the stack, so they would only be placeholders. The `.gitignore` ignores `.vscode/*` and re-includes only these three files, so personal files in the folder stay local.
 
@@ -296,16 +296,16 @@ Generated from `{{ _copier_conf.answers_file }}.jinja` and committed with the pr
 
 ### `.pre-commit-config.yaml`
 
-Git hooks that run automatically on `git commit`. `pre-commit` itself is a dev dependency, installed by `make install`. They are **fast checks only**, so commits stay quick:
+Git hooks that run automatically on `git commit`. `pre-commit` itself is a dev dependency, installed by `just install`. They are **fast checks only**, so commits stay quick:
 
 - **Ruff** (`ruff-check` with `--fix`, and `ruff-format`) — lint and format the changed files. Both exclude `.claude/`: it is agent tooling, and in `product` projects the Ruff config lives in `backend/`, so at the repo root Ruff would reformat those scripts (and the code blocks in the skills' Markdown) with its defaults on the first commit.
 - **pre-commit-hooks** — trailing whitespace, end-of-file newline, YAML and TOML validity, merge-conflict markers, leftover `breakpoint()`/`pdb` calls, and `check-added-large-files` (1000 KB), which stops a dataset or model from being committed by accident.
 - **detect-secrets** — scans the commit for secrets (API keys, tokens, private keys). `AGENTS.md` says never to commit secrets; this enforces it. A false positive can be allowed with a `# pragma: allowlist secret` comment on the line, and lockfiles are excluded because they are full of hashes. It is a pure-Python hook: `gitleaks` was tried first, but as a Go hook pre-commit has to download a Go toolchain, which failed on a machine whose Python had no certificate store.
 - **nbstripout** (`use_ml` only) — strips outputs and execution counts from notebooks, which bloat diffs and can leak data.
-- **`typecheck`** — runs `make typecheck`, but only when Python files changed (`^backend/` in product, the package and `tests/` in simple).
-- **`frontend-lint`** (product only) — runs `make lint-frontend` when a commit touches `frontend/`.
+- **`typecheck`** — runs `just typecheck`, but only when Python files changed (`^backend/` in product, the package and `tests/` in simple).
+- **`frontend-lint`** (product only) — runs `just lint-frontend` when a commit touches `frontend/`.
 
-**There is deliberately no test hook.** `make test` is for you to run when you want it, CI runs it on every push and pull request, and a full test run on every commit made commits slow. (The agent has its own guard, `test_gate.py`, which blocks its commits on a red suite; see [`.claude/hooks/`](#claudehooks).)
+**There is deliberately no test hook.** `just test` is for you to run when you want it, CI runs it on every push and pull request, and a full test run on every commit made commits slow. (The agent has its own guard, `test_gate.py`, which blocks its commits on a red suite; see [`.claude/hooks/`](#claudehooks).)
 
 The hook revisions are bumped to the latest by `pre-commit autoupdate` during generation. They are not covered by Dependabot, so when Dependabot bumps `ruff` in `pyproject.toml`, bump the `ruff-pre-commit` revision to match by hand.
 
@@ -331,7 +331,7 @@ stages:
     plots: [runs/artifacts/plots.csv: {cache: false}]
 ```
 
-DVC re-runs only the stages whose dependencies changed, which is what `make dvc-repro` does. The `.dvc/` folder and `dvc.yaml` live at the repo root — DVC tracks `data/` and `runs/`, which are shared by the whole project — while the `dvc` program itself is a dev dependency of the Python project (so in `backend/` for product projects), which is why the commands run through `uv run --project`. The stage modules exist (see [the `pipeline/` package](#pipeline-use_ml-only)) as working placeholders, so `dvc init` followed by `make dvc-repro` runs green on a fresh project. In product projects `uv run --project backend` points uv at the backend environment while the command still runs from the repo root, where `data/` and `runs/` live.
+DVC re-runs only the stages whose dependencies changed, which is what `just dvc-repro` does. The `.dvc/` folder and `dvc.yaml` live at the repo root — DVC tracks `data/` and `runs/`, which are shared by the whole project — while the `dvc` program itself is a dev dependency of the Python project (so in `backend/` for product projects), which is why the commands run through `uv run --project`. The stage modules exist (see [the `pipeline/` package](#pipeline-use_ml-only)) as working placeholders, so `dvc init` followed by `just dvc-repro` runs green on a fresh project. In product projects `uv run --project backend` points uv at the backend environment while the command still runs from the repo root, where `data/` and `runs/` live.
 
 `.dvcignore` is the DVC equivalent of `.gitignore`: files DVC should not track or hash (virtual environments, Python caches, `logs/`).
 
@@ -353,7 +353,7 @@ There is no logging config file here. Logging is Python-only, so it is configure
 
 The importable code. In `simple` projects the folder is named after the project; in `product` projects it is `backend/app/`. The name is `{{ package_name }}` everywhere in the template.
 
-Why `app` inside `backend/` and not the project name: the project name is already the repo name and the `pyproject.toml` name, so repeating it as a folder adds nothing. A fixed name also means the Makefile, CI, scripts and skills never need to know it. (`src` is not an alternative: that is a *layout* convention, `src/<package>/`, not a package name.)
+Why `app` inside `backend/` and not the project name: the project name is already the repo name and the `pyproject.toml` name, so repeating it as a folder adds nothing. A fixed name also means the justfile, CI, scripts and skills never need to know it. (`src` is not an alternative: that is a *layout* convention, `src/<package>/`, not a package name.)
 
 ### `__init__.py`
 
@@ -370,7 +370,7 @@ LOG_DIR = ROOT / "logs"
 # with use_ml: DATA_DIR, RAW_DIR, PROCESSED_DIR, ARTIFACTS_DIR
 ```
 
-`ROOT` is the repo root, worked out from the file's own location rather than the current directory, so code behaves the same whether you run it from the repo root, from `backend/`, or from a test. `parents[1]` becomes `parents[2]` in product projects because the package sits one folder deeper. A sample test asserts that `ROOT` really is the repo root (it contains the `Makefile`), so a wrong depth is caught immediately.
+`ROOT` is the repo root, worked out from the file's own location rather than the current directory, so code behaves the same whether you run it from the repo root, from `backend/`, or from a test. `parents[1]` becomes `parents[2]` in product projects because the package sits one folder deeper. A sample test asserts that `ROOT` really is the repo root (it contains the `justfile`), so a wrong depth is caught immediately.
 
 ### `utils/logger.py`
 
@@ -415,7 +415,7 @@ The three DVC stages as modules — `prepare.py`, `train.py` and `evaluate.py` �
 
 `__init__.py` makes the folder a package; `test_sample.py` checks `__version__` and that `ROOT` is the repo root, and `test_logger.py` that `get_logger` returns a named logger. With `use_ml`, `test_pipeline.py` checks that each stage module imports and exposes `main()` — the contract `dvc.yaml` depends on. Pytest runs with coverage by default, configured in `pyproject.toml`.
 
-In `product` projects each part of the system owns its tests instead of one root folder: Python tests in `backend/tests/`, frontend tests next to the frontend code (whatever runner the chosen stack uses, run by `npm run test`), and `infra/tests/` for infrastructure checks. `make test` runs all of them.
+In `product` projects each part of the system owns its tests instead of one root folder: Python tests in `backend/tests/`, frontend tests next to the frontend code (whatever runner the chosen stack uses, run by `npm run test`), and `infra/tests/` for infrastructure checks. `just test` runs all of them.
 
 ## `frontend/` *(product only)*
 
@@ -429,7 +429,7 @@ The guide is written for a person who isn't a frontend specialist, and for an ag
 4. **How to scaffold** — record the decision, delete the guide (scaffolders refuse a non-empty folder), run the framework's own scaffold command, add Vitest, pin exact versions (`.npmrc` with `save-exact=true`, and replacing the scaffold's `^` ranges), commit the lockfile.
 5. **What the rest of the project expects** — the `lint`, `test`, `build` and `dev` npm scripts, uncommenting the npm block in Dependabot, updating `AGENTS.md`.
 
-It ends with a *Decision* section to fill in, which can be copied into an ADR. Until `frontend/package.json` exists, the Makefile targets print a hint and skip, the CI frontend job passes without running anything, and the pre-commit hook does nothing.
+It ends with a *Decision* section to fill in, which can be copied into an ADR. Until `frontend/package.json` exists, the justfile recipes print a hint and skip, the CI frontend job passes without running anything, and the pre-commit hook does nothing.
 
 ## `infra/` *(product only)*
 
@@ -441,7 +441,7 @@ Infrastructure as code — Terraform, Pulumi, Kubernetes manifests and the like.
 
 ### `scripts/setup.sh`
 
-The project bootstrap for a fresh clone. It installs only what belongs to **this project** — dependencies, the git hook, `.env` — and never anything system-wide. Tools like `uv`, Node, `rtk` and `graphify` are machine-level: they serve every project, so they are installed once per machine (see [`bootstrap-machine.sh`](#bootstrap-machinesh-template-repo-only)), and a project script that installs them would copy that logic into every project, where it drifts and surprises people with side effects outside the repo.
+The project bootstrap for a fresh clone. It installs only what belongs to **this project** — dependencies, the git hook, `.env` — and never anything system-wide. Tools like `uv`, `just`, Node, `rtk` and `graphify` are machine-level: they serve every project, so they are installed once per machine (see [`bootstrap-machine.sh`](#bootstrap-machinesh-template-repo-only)), and a project script that installs them would copy that logic into every project, where it drifts and surprises people with side effects outside the repo.
 
 ```bash
 set -euo pipefail
@@ -451,7 +451,7 @@ This line makes the script strict: `-e` exits immediately if any command fails, 
 
 The steps, in order:
 
-1. **Check the required tools** — `git`, `make` and `uv` (and `npm` if `frontend/package.json` exists). A missing one stops the script with the install link, instead of installing it.
+1. **Check the required tools** — `git`, `just` and `uv` (and `npm` if `frontend/package.json` exists). A missing one stops the script with the install link, instead of installing it.
 2. Run `resolve-latest.sh` (does nothing when `uv.lock` exists), then `uv sync` from the lockfile, and `npm ci` once a frontend exists.
 3. Install the pre-commit hook.
 4. With `use_ml`: `dvc init`, only if `.dvc/` doesn't exist yet (it creates `.dvc/` and edits `.gitignore`, and only needs to happen once).
@@ -471,15 +471,15 @@ It skips itself once `uv.lock` exists, so it is safe to re-run and `copier updat
 
 ### `scripts/dev.sh` *(product only)*
 
-What `make dev` runs: it starts the backend and the frontend dev servers together and stops both on Ctrl+C (each server runs in its own process group through job control, so stopping one also stops what it started, such as `npm` and the `node` process under it). It ships as a **skeleton**: the two commands, `BACKEND_CMD` (run from `backend/`) and `FRONTEND_CMD` (run from `frontend/`), are empty, with an example next to each (`uv run uvicorn app.main:app --reload`, `npm run dev`), because neither the backend entry point nor the frontend exists yet. An empty command is skipped, and with both empty the script exits with an explanation instead of starting nothing. Fill them in when the stack is chosen; `frontend/decide-frontend-style.md` reminds you.
+What `just dev` runs: it starts the backend and the frontend dev servers together and stops both on Ctrl+C (each server runs in its own process group through job control, so stopping one also stops what it started, such as `npm` and the `node` process under it). It ships as a **skeleton**: the two commands, `BACKEND_CMD` (run from `backend/`) and `FRONTEND_CMD` (run from `frontend/`), are empty, with an example next to each (`uv run uvicorn app.main:app --reload`, `npm run dev`), because neither the backend entry point nor the frontend exists yet. An empty command is skipped, and with both empty the script exits with an explanation instead of starting nothing. Fill them in when the stack is chosen; `frontend/decide-frontend-style.md` reminds you.
 
 ### `bootstrap-machine.sh` *(template repo only)*
 
 Lives at the root of the template repo, **outside `template/`**, so it is never copied into generated projects. You run it once per machine:
 
-- **Required:** `uv` (installer script) and `copier` (`uv tool install copier`).
+- **Required:** `uv` (installer script), `copier` (`uv tool install copier`) and `just` (`uv tool install rust-just`).
 - **Optional, best-effort:** [**graphify**](https://github.com/Graphify-Labs/graphify) builds a knowledge graph of the codebase that assistants can query for structure instead of grepping, and [**rtk**](https://github.com/rtk-ai/rtk) filters and compresses command output before it reaches an agent's context window, so long `pytest` or `git log` output doesn't burn tokens. The `rtk` install path is OS-dependent: `brew` on macOS (falling back to the install script), the install script on Linux, `winget` on Windows (Git Bash / MSYS), and a skip-with-warning anywhere else. Each optional install is wrapped in `|| warn ...`, so a failure prints a warning and the script continues.
-- **Checked, not installed:** `git`, `make` and Node.js. Those belong to your system's package manager.
+- **Checked, not installed:** `git` and Node.js. Those belong to your system's package manager.
 
 It is idempotent: anything already installed is skipped. Neither graphify nor rtk is a dependency of any project — they are conveniences for the person (or agent) driving it.
 
@@ -500,12 +500,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend:    # install uv (pinned), make sync, make lint-py, make format-check, make typecheck, make test-py
+  backend:    # install uv and just (both pinned), just sync, just lint-py, just format-check, just typecheck, just test-py
   frontend:   # detect frontend/package.json; then npm ci, lint, test, build (each step guarded)
 ```
 
 - **Two jobs run in parallel**, so either can fail without hiding the other.
-- **Steps call `make` targets** instead of repeating commands, so CI and local runs are the same thing. The Makefile knows where Python lives, which is why the Python job is identical for simple and product projects.
+- **Steps call `just` recipes** instead of repeating commands, so CI and local runs are the same thing. The justfile knows where Python lives, which is why the Python job is identical for simple and product projects.
 - **The frontend job guards its steps** on the presence of `frontend/package.json`. `hashFiles` isn't available in a job-level `if`, so a first step detects the file and the rest check its output. In a `simple` project every step is skipped and the job passes in seconds, so it is harmless there; a comment in the file says it can be removed from a project that will never have a frontend. in a `product` project it starts running lint, vitest and a production build (which catches type errors the linter doesn't) as soon as `frontend/package.json` exists.
 - **`concurrency` cancels superseded runs** of the same branch or PR, **`permissions: contents: read`** gives the workflow the minimum it needs, and each job has a **`timeout-minutes`**.
 - **Versions are pinned exactly** (actions, `uv`, Node). Dependabot proposes updates for the actions; the `uv` install URL carries a version and needs bumping by hand.
@@ -622,7 +622,7 @@ There is no `context` block: Claude Code loads `CLAUDE.md` on its own, and that 
 
 The first two hooks share a philosophy: **they guard the agent, not you**, so neither has an override. If you need to do one of these things yourself, do it outside Claude Code. The third, `format_python.py`, is not a guard: it never blocks anything.
 
-**`test_gate.py`** — blocks any Bash call containing `git commit` unless `make test` passes first. It matches the command string with a regex (`git ... commit`, including `git -C path commit` and chained `&& git commit`) and deliberately ignores whatever flags follow, so `--no-verify` doesn't help — the hook runs before Bash ever sees the command. Tests run with a 10-minute timeout. Infrastructure problems (no `Makefile`, no `make` or `uv` on PATH, malformed hook input) **fail open** with a warning rather than blocking on something the agent can't fix by writing code.
+**`test_gate.py`** — blocks any Bash call containing `git commit` unless `just test` passes first. It matches the command string with a regex (`git ... commit`, including `git -C path commit` and chained `&& git commit`) and deliberately ignores whatever flags follow, so `--no-verify` doesn't help — the hook runs before Bash ever sees the command. Tests run with a 10-minute timeout. Infrastructure problems (no `justfile`, no `just` or `uv` on PATH, malformed hook input) **fail open** with a warning rather than blocking on something the agent can't fix by writing code.
 
 **`destructive_guard.py`** — blocks a short list of obviously destructive commands:
 
@@ -635,10 +635,10 @@ The first two hooks share a philosophy: **they guard the agent, not you**, so ne
 
 It splits on `&&`, `||`, `;`, `|` to inspect each command in a chain and tokenizes with `shlex`. It's a heuristic safety net for the common careless case, not a shell parser — unusual quoting can slip past it.
 
-**`format_python.py`** — a `PostToolUse` hook that runs `ruff format` on every `.py` file the agent just wrote or edited, so its code arrives formatted without waiting for pre-commit or `make fix`.
+**`format_python.py`** — a `PostToolUse` hook that runs `ruff format` on every `.py` file the agent just wrote or edited, so its code arrives formatted without waiting for pre-commit or `just fix`.
 
 - It reads the file path from the hook's JSON with Python, so it needs no `jq`. (An earlier version was a shell one-liner that piped the JSON through `jq` and called `ruff` directly. That needed `jq` installed and Ruff on the global PATH, and `2>/dev/null || true` hid the failure when either was missing, so in a fresh project it quietly did nothing.)
-- It finds the Python project by walking up from the file to the nearest `pyproject.toml` — the repo root in simple projects, `backend/` in product projects — and runs `uv run --project <that folder> ruff format --force-exclude <file>`. So it uses the project's own pinned Ruff and its own config, exactly like `make format`.
+- It finds the Python project by walking up from the file to the nearest `pyproject.toml` — the repo root in simple projects, `backend/` in product projects — and runs `uv run --project <that folder> ruff format --force-exclude <file>`. So it uses the project's own pinned Ruff and its own config, exactly like `just format`.
 - `--force-exclude` makes it honour the project's Ruff excludes (simple projects exclude `.claude/`). Files outside the project folder, and files with no `pyproject.toml` above them (for example Python scripts under `.claude/` in a product project), are skipped silently.
 - It never blocks. Exit code 2 means Ruff rejected the file, usually a syntax error: Ruff's message goes to the agent so it can fix its edit. Exit code 1 means the hook couldn't run (`uv` missing, a 60-second timeout) and the reason is shown to you, instead of being swallowed.
 
@@ -672,7 +672,7 @@ A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional 
 | Skill | Invoked by | What it does |
 |---|---|---|
 | `spec` | you (`/spec`) | Turns a feature request into `docs/specs/<type>_<name>/SPEC.md` plus a seam-organized `PLAN.md`, after a bounded round of clarifying questions and a seam check. Creates the matching `feat/`, `fix/`, or `refactor/` branch. Continues straight into `implement` by default. |
-| `implement` | you (`/implement`, or via `/spec`) | Works through the plan seam by seam: `tdd` at each seam, `logic-checker` before each seam's test confirms green, `make test`/`lint`/`typecheck` throughout, `PLAN.md` checked off, a short report per seam in the conversation and a final `REPORT.md` in the spec folder. Ends with an optional refactor pass and an independent `code-reviewer` pass. Never pauses for confirmation; never commits. |
+| `implement` | you (`/implement`, or via `/spec`) | Works through the plan seam by seam: `tdd` at each seam, `logic-checker` before each seam's test confirms green, `just test`/`lint`/`typecheck` throughout, `PLAN.md` checked off, a short report per seam in the conversation and a final `REPORT.md` in the spec folder. Ends with an optional refactor pass and an independent `code-reviewer` pass. Never pauses for confirmation; never commits. |
 | `tdd` | model | Red-green test-driven development, one seam at a time — what a good test looks like, mocking at boundaries only, plus ML-specific rules (tolerance-based float assertions, checked-in fixtures, seeding, flaky-test handling). |
 | `diagnosing-bugs` | model | Triages a bug report or a half-built feature into confirmed bugs (→ `debugger`, one at a time) vs. pieces that were never built (→ `/spec` + `implement`), then dispatches. Includes a `scripts/hitl-loop.template.sh` for human-in-the-loop repro loops. |
 | `grilling` | model | The interview engine: questions the user relentlessly about a plan until nothing is silently assumed. Backs `grill-me` and `grill-with-docs`; dispatches `context-scout` when a question needs a fact. |
@@ -729,7 +729,7 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 | Folder | Layout | Purpose |
 |---|---|---|
 | `config/` | all | Configuration files (not `.gitkeep`; it holds `config.yaml`) |
-| `docs/` | all | Written record of the project. `specs/` and `adr/` are created by the AI workflow and committed; `build/` is generated by `make docs` and gitignored |
+| `docs/` | all | Written record of the project. `specs/` and `adr/` are created by the AI workflow and committed; `build/` is generated by `just docs` and gitignored |
 | `logs/` | all | Runtime log files written by the logger. Rotated automatically |
 | `data/raw/` | `use_ml` | Immutable source data. Contents gitignored and DVC-tracked; the `.gitkeep` makes sure the `prepare` stage's dependency exists |
 | `notebooks/` | `use_ml` | Jupyter notebooks for exploration and analysis. Not used in the pipeline |
@@ -763,7 +763,7 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 | `.claude/skills/` | Occasionally | When you add a project-specific skill — `/utilities:writing-for-agents` (marketplace, off by default) is the guide |
 | `.claude/agents/` | Rarely | When you need a new specialist or want to change a model tier |
 | `scripts/dev.sh` | Once | When the stack is chosen: fill in `BACKEND_CMD` and `FRONTEND_CMD` (product) |
-| `Makefile` | Rarely | When adding new workflow shortcuts |
+| `justfile` | Rarely | When adding new workflow shortcuts |
 | `.github/workflows/` | Rarely | When changing CI behaviour |
 | `.github/dependabot.yaml` | Once | To turn Dependabot on (remove its line from `.gitignore`), then rarely |
 | `.pre-commit-config.yaml` | Rarely | When adding hooks, or bumping the Ruff revision to match `pyproject.toml` |
