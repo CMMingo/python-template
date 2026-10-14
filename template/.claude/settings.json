@@ -1,4 +1,27 @@
 {
+  "extraKnownMarketplaces": {
+    "my-marketplaced-skills": {
+      "source": {
+        "source": "github",
+        "repo": "CMMingo/my-marketplaced-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "dev@my-marketplaced-skills": true,
+    "learning@my-marketplaced-skills": true,
+    "niche@my-marketplaced-skills": false,
+    "presenting@my-marketplaced-skills": true,
+    "utilities@my-marketplaced-skills": false,
+    "Z-JustInCase@my-marketplaced-skills": false,
+    "anatomy@my-marketplaced-skills": false,
+    "diagram-design@my-marketplaced-skills": true,
+    "find-skills@my-marketplaced-skills": false,
+    "make-pages-interactive@my-marketplaced-skills": true,
+    "ppt-master@my-marketplaced-skills": true,
+    "reverse-engineer-anything@my-marketplaced-skills": false,
+    "session-memory@my-marketplaced-skills": false
+  },
   "hooks": {
     "PreToolUse": [
       {
