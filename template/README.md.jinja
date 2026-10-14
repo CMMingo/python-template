@@ -51,7 +51,7 @@ Dependencies are not written by hand: they were resolved to their latest version
 ├── infra/                      # infrastructure as code
 │   └── tests/
 {%- else %}
-├── {{ package_name }}/         # importable package
+├── {{ '%-28s'|format(package_name ~ '/') }}# importable package
 {%- if use_ml %}
 │   ├── pipeline/               # DVC stages: prepare, train, evaluate (placeholders)
 {%- endif %}
@@ -84,6 +84,8 @@ Dependencies are not written by hand: they were resolved to their latest version
 ├── pyproject.toml              # dependencies pinned exactly
 ├── uv.lock
 {%- endif %}
+├── .claude/                    # settings, hooks, agents and skills for Claude Code
+├── .github/                    # CI workflows, issue and PR templates
 ├── .vscode/                    # shared VS Code settings, extensions and tasks
 ├── Makefile
 ├── AGENTS.md                   # project context for AI assistants
@@ -104,7 +106,7 @@ Dependencies are not written by hand: they were resolved to their latest version
 
 ## Docs
 
-This project keeps three different kinds of documentation, each with its own purpose, scope, and lifecycle -- don't mix them up.
+This project keeps several kinds of documentation, each with its own purpose, scope, and lifecycle -- don't mix them up.
 
 | Location | What it holds | Scope | Written by |
 |---|---|---|---|
@@ -123,7 +125,7 @@ See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full sp
 
 ### Environment
 
-| Command | Description |
+| Command | What it does |
 |---|---|
 | `make setup` | Bootstrap a fresh clone — checks the required tools, installs deps and the pre-commit hook{{ ', initialises DVC' if use_ml }}, creates `.env` |
 | `make install` | Install dependencies and the pre-commit hook (assumes uv is already installed) |

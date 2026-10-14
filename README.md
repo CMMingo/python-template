@@ -194,7 +194,7 @@ python-template/
     │   └── PULL_REQUEST_TEMPLATE.md
     ├── .claude/                        ← settings, hooks, agents, skills
     ├── Makefile.jinja
-    ├── AGENTS.md.jinja                 ← project brief for any agent
+    ├── AGENTS.md.jinja                 ← how to work in the project, for any agent
     ├── CLAUDE.md                       ← imports AGENTS.md; Claude Code specifics
     ├── CONTEXT.md.jinja                ← domain glossary skeleton, filled in by the skills
     ├── README.md.jinja

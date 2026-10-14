@@ -22,6 +22,8 @@ A person or organization that places orders.
 _Avoid_: Client, buyer, account
 ```
 
+The template's skeleton also has an optional `## Out of scope` section before *Language*: one or two lines on what the project deliberately does not do.
+
 ## Rules
 
 - **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others under `_Avoid_`.

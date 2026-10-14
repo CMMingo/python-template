@@ -18,7 +18,7 @@ This is deliberately a different mindset from `tdd` and `implement`. Feature wor
 
 Everything below is the concrete discipline that mindset runs through. Skip phases only when explicitly justified.
 
-Before you start: if there's no branch dedicated to this bug yet, create and check out `fix/<yyyy_mm>-<slug>` (a short slug for the bug) before touching anything. If you were handed a spec folder (this bug surfaced while implementing a feature, or one already covers the affected area), read its `SPEC.md`'s *Implementation Decisions* and *Testing Decisions* sections first -- they tell you what's supposed to happen, which sharpens your hypotheses about what's actually happening instead of starting from zero. If you weren't handed one -- a standalone bug with no spec covering it -- create `docs/specs/fix-<yyyy_mm>-<slug>/` yourself (just the folder; a `SPEC.md` isn't required for a standalone fix) so the diagnosis has a home for its report.
+Before you start: if there's no branch dedicated to this bug yet, create and check out `fix/<yyyy_mm>-<slug>` (a short slug for the bug) before touching anything. If you were handed a spec folder (this bug surfaced while implementing a feature, or one already covers the affected area), read its `SPEC.md`'s *Implementation Decisions* and *Testing Decisions* sections first -- they tell you what's supposed to happen, which sharpens your hypotheses about what's actually happening instead of starting from zero. If you weren't handed one -- a standalone bug with no spec covering it -- that's fine: the diagnosis report goes to `docs/debug/` either way (see below), not into a spec folder.
 
 When exploring the codebase, read `CONTEXT.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching. For a quick lookup during exploration ("does this function already handle X", "where is this called from"), dispatch the `context-scout` subagent rather than reading broadly yourself.
 
@@ -142,7 +142,7 @@ When the cap is hit:
 
 1. **Don't force a fix onto an unconfirmed hypothesis.** A change that happens to make the symptom go away without a confirmed cause is worse than no fix -- it hides the bug instead of closing it.
 2. Remove all `[DEBUG-...]` instrumentation before writing anything up -- leaving debug logging behind in an abandoned attempt is its own hazard for whoever picks this up next.
-3. Write a report to `docs/specs/<the spec folder>/reports/NNNN-debugger.md` (create the standalone `docs/specs/fix-<yyyy_mm>-<slug>/` folder first if none exists, per "Before you start" above) covering: the tight feedback loop you built (so the next attempt doesn't have to rebuild it), every hypothesis tested across both rounds and the evidence that ruled each out, the current leading theory even though it's unconfirmed and why it's still standing, and what would unblock it -- access to an environment, more logs, a decision or domain fact only the user has.
+3. Write a report to `docs/debug/<yyyy_mm>-<slug>.md` (one file per bug, named after the same slug as the branch; if you were handed a spec, name its folder at the top of the report) covering: the tight feedback loop you built (so the next attempt doesn't have to rebuild it), every hypothesis tested across both rounds and the evidence that ruled each out, the current leading theory even though it's unconfirmed and why it's still standing, and what would unblock it -- access to an environment, more logs, a decision or domain fact only the user has.
 4. Stop there. Tell the user plainly that this one is stuck and needs their input, rather than continuing to guess or declaring it fixed.
 
 This gate sits between Phase 4 and Phase 5 -- it doesn't replace Phase 5. The moment a hypothesis actually confirms, in round 1 or round 2, go straight to Phase 5 rather than waiting for the round to run out.
@@ -174,6 +174,6 @@ Required before declaring done:
 - [ ] All `[DEBUG-...]` instrumentation removed (`grep` the prefix)
 - [ ] Throwaway prototypes deleted (or moved to a clearly-marked debug location)
 - [ ] The hypothesis that turned out correct is stated in the commit message, so the next debugger learns
-- [ ] A report written to `docs/specs/<the spec folder>/reports/NNNN-debugger.md` (see the `spec` skill's "Where things live" section for the naming convention) covering the confirmed hypothesis, what was tried and ruled out, the fix, and the regression test (or absence of seam) -- so the next reader understands the diagnosis without re-deriving it
+- [ ] A report written to `docs/debug/<yyyy_mm>-<slug>.md` (one file per bug, named after the branch slug; if there is a spec, name its folder at the top) covering the confirmed hypothesis, what was tried and ruled out, the fix, and the regression test (or absence of seam) -- so the next reader understands the diagnosis without re-deriving it
 
 For anything beyond a trivial fix, dispatch `code-reviewer` before committing. Once the checklist above passes (and review, if you ran it), tell the user it's ready for `/commit-push` -- don't commit or push yourself.

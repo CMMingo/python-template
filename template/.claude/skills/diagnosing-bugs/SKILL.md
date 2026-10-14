@@ -13,7 +13,7 @@ Before dispatching anything, spend a short pass identifying the concrete, indepe
 - **Not built yet** -- a piece the feature needs but was never implemented. Not a bug. Flag it and route it to `/spec` (a small, scoped one) + `implement` instead -- `debugger`'s skeptical, root-cause mindset doesn't apply to something that never existed.
 - **Genuinely unclear which** -- ask the user briefly, or make the call and flag it as an assumption in the eventual report, the same convention `/spec` and `implement` already use.
 
-If a spec already exists for the feature, fold the triaged list into its `plan/PLAN.md` rather than inventing a separate format -- confirmed bugs become tasks in their own bucket there, unbuilt pieces become ordinary implementation tasks.
+If a spec already exists for the feature, fold the triaged list into its `PLAN.md` rather than inventing a separate format -- confirmed bugs become tasks in their own bucket there, unbuilt pieces become ordinary implementation tasks.
 
 Once triaged, dispatch `debugger` once per confirmed-broken item, one at a time -- each gets its own tight feedback loop, its own hypothesis rounds, and its own report. Don't try to cover more than one symptom in a single `debugger` run.
 
@@ -26,7 +26,7 @@ Before dispatching, give it:
 - The exact symptom for *this one item* (verbatim, from the user's description or from Triage above -- don't paraphrase it away).
 - How to reproduce the environment (dev server running, which branch, any relevant recent changes).
 - Whether a branch already exists for this fix -- if not, tell it to create and check out `fix/<yyyy_mm>-<slug>` first.
-- **If a spec exists for this work** (`docs/specs/<type>-<yyyy_mm>-<name>/` -- either this bug surfaced while implementing it, Triage found it inside one, or one already covers the affected area), pass its folder path. Its `SPEC.md`'s *Implementation Decisions* and *Testing Decisions* sections tell `debugger` what's supposed to be true, which sharpens its hypotheses instead of making it reconstruct intent from scratch. If none exists, `debugger` creates a standalone `docs/specs/fix-<yyyy_mm>-<slug>/` folder itself for its report -- you don't need to create one first.
+- **If a spec exists for this work** (`docs/specs/<type>-<yyyy_mm>-<name>/` -- either this bug surfaced while implementing it, Triage found it inside one, or one already covers the affected area), pass its folder path. Its `SPEC.md`'s *Implementation Decisions* and *Testing Decisions* sections tell `debugger` what's supposed to be true, which sharpens its hypotheses instead of making it reconstruct intent from scratch. Either way, `debugger` writes its report to `docs/debug/<yyyy_mm>-<slug>.md` (not into a spec folder, since one investigation can touch several specs) -- you don't need to create anything first.
 
 If Triage produced more than one confirmed-broken item, repeat Dispatch for each in turn -- don't run them concurrently against the same working tree.
 

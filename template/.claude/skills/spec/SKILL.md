@@ -15,8 +15,8 @@ Two things kill specs in practice: interviews that never end, and specs that inv
 Each spec gets its own folder: `docs/specs/<type>-<yyyy_mm>-<name>/`, where `<type>` is `feat`, `fix`, or `refactor` (a bug report and a bug fix are both `fix` — there's no separate `bug` type), `<yyyy_mm>` is the year and month the spec was created, and `<name>` is a short kebab-case name (e.g. `docs/specs/feat-2026_09-multi-edit/`). Inside:
 
 - `SPEC.md` — the spec itself (step 4 below).
-- `plan/PLAN.md` — the task breakdown `implement` works through (step 5 below).
-- `reports/` — created lazily, the first time `implement` or `debugger` finishes a run against this spec. Each run adds one file, named `NNNN-<skill>.md` (zero-padded, e.g. `0001-implement.md`, `0002-debugger.md`), numbered in the order they're written. Not created by this skill.
+- `PLAN.md` — the task breakdown `implement` works through (step 5 below). One file, updated in place.
+- `REPORT.md` — written by `implement` when it finishes a run, and updated in place by later runs (add a dated section rather than another file). Created only when there is something to report; not created by this skill.
 
 Everything sits directly in the spec folder: no `plan/` or `reports/` subfolders. Expect one plan and one or two reports per spec, not a growing history. Debugging does not write here: `debugger` reports go to `docs/debug/`, because one investigation can touch several specs.
 
@@ -86,7 +86,7 @@ Anything else worth recording — including, explicitly, any assumption made in 
 
 ### 5. Write the plan
 
-Before implementation starts, break the spec into a task list at `docs/specs/<type>-<yyyy_mm>-<name>/plan/PLAN.md` — the first concrete thing built off the spec, and what `implement` actually works through.
+Before implementation starts, break the spec into a task list at `docs/specs/<type>-<yyyy_mm>-<name>/PLAN.md` — the first concrete thing built off the spec, and what `implement` actually works through.
 
 Organize it by seam, not as a flat list: for each seam named in *Testing Decisions*, nest under it the tasks that prove it, in the order they need to happen. A seam is *where* the feature gets verified from the outside (an interface boundary that survives a rewrite); a task is a *unit of work* toward proving one — a red test, the implementation that turns it green, maybe supporting plumbing. Most seams expand into a handful of tasks, not one. Some tasks won't serve any single seam (shared setup, a migration, config) — put those in their own bucket rather than forcing them under a seam they don't belong to.
 

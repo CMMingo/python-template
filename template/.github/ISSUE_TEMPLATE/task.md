@@ -20,7 +20,7 @@ Related: <!-- links: the spec or ADR this comes from, a parent issue, blocking i
 
 <!--
 The reason this work exists and what it unblocks, in a few lines.
-Link the spec (docs/specs/...) or the decision record (docs/adr/...) if there is one.
+Link the spec (docs/specs/...) or the decision record (docs/ADRs/...) if there is one.
 -->
 
 ## What to do

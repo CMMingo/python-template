@@ -52,7 +52,7 @@ Take these unless the project gives a reason to change one.
 
 ## 4. Scaffold it
 
-1. Fill in the **Decision** section below, then copy it into an ADR under `docs/adr/` if it
+1. Fill in the **Decision** section below, then copy it into an ADR under `docs/ADRs/` if it
    should outlive this file.
 2. Delete this file. Scaffolding tools refuse a folder that isn't empty.
 3. Scaffold with the framework's own command, never by hand. For a Vite single-page app:

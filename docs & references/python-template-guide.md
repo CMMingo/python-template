@@ -215,7 +215,6 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 ## Development workflow      ← pre-filled: how the skills, subagents and hooks compose
 ## General guidelines        ← pre-filled: dev philosophy, tooling rules, constraints
 ## Behavioral guidelines     ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
-## Out of scope              ← fill in
 ```
 
 `AGENTS.md` says how to work in the project; it does not hold the project overview or the out-of-scope notes. Those live in `CONTEXT.md`, together with the domain glossary. The *Domain context* section only says where things are, and nothing is imported, so `CONTEXT.md` is not loaded in every session: the skills that need the domain language (`tdd`, `debugger`, `code-reviewer`, `wait-what`, the grilling pair) read it when they run, and a plain conversation reads it only if the agent follows the pointer. If you ever want it always loaded, add a line `@CONTEXT.md` to `AGENTS.md`: Claude Code expands `@path` imports at launch (tested), at the cost of the whole glossary in every session.
@@ -750,8 +749,10 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 |---|---|---|
 | `AGENTS.md` | Frequently | Every time the project architecture or conventions change — keep it current so the agent stays effective |
 | `CONTEXT.md` | Frequently, via the skills | Whenever terminology gets settled (`/grill-with-docs`, `domain-modeling`) |
-| `docs/specs/` | Per feature / fix | Created by `/spec`, updated by `implement` and `debugger` — you read the reports, you rarely edit them |
-| `docs/adr/` | Per hard decision | Written by `domain-modeling` when a non-obvious, hard-to-reverse choice is made |
+| `docs/specs/` | Per feature / fix | Created by `/spec`, updated by `implement` — you read `REPORT.md`, you rarely edit it |
+| `docs/debug/` | Per bug | Written by `debugger` |
+| `docs/clarifications/` | Whenever you want | Yours; gitignored |
+| `docs/ADRs/` | Per hard decision | Written by `domain-modeling` when a non-obvious, hard-to-reverse choice is made |
 | `CHANGELOG.md` | Per commit, via `changelog-writer` | Whenever something user-facing changes — automated through `/commit-push` |
 | `README.md` | Per commit, via `docs-updater` | Whenever the change makes something in it stale — automated through `/commit-push` |
 | `config/config.yaml` | Per project | When adding new configuration |
