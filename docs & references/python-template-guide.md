@@ -556,7 +556,7 @@ Everything under `.claude/` is what makes a generated project *AI-native* rather
 ├── settings.json        ← registers the hooks
 ├── hooks/               ← three Python scripts: two run before every Bash call, one after every Write/Edit
 ├── agents/              ← 7 subagent definitions (+ README roster)
-└── skills/              ← 13 engineering skills + 9 productivity skills (+ README rosters)
+└── skills/              ← 14 workflow skills (+ README roster); general-purpose skills come from the marketplace
 ```
 
 The pieces compose as described in `AGENTS.md`'s **Development workflow** section. In one line: `/grill-with-docs` → `/spec` → `implement` (`tdd` + `logic-checker` + `code-reviewer`) → `/commit-push` (`changelog-writer` + `docs-updater` + `commit-push`) → PR by hand, with `diagnosing-bugs` → `debugger` as the separate track for things that are already broken, and the two hooks underneath all of it.
@@ -565,6 +565,13 @@ The pieces compose as described in `AGENTS.md`'s **Development workflow** sectio
 
 ```json
 {
+  "extraKnownMarketplaces": {
+    "my-marketplaced-skills": { "source": { "source": "github", "repo": "CMMingo/my-marketplaced-skills" } }
+  },
+  "enabledPlugins": {
+    "learning@my-marketplaced-skills": true,
+    "...": false
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -586,6 +593,13 @@ The pieces compose as described in `AGENTS.md`'s **Development workflow** sectio
   }
 }
 ```
+
+The `extraKnownMarketplaces` and `enabledPlugins` blocks are the per-project switchboard for the general-purpose skills (see *Skills from the marketplace*). The first tells Claude Code where the marketplace lives, so opening the project offers to install it. The second lists every plugin from it: `dev`, `learning` and `presenting`, with their members (`diagram-design`, `make-pages-interactive`, `ppt-master`), are `true` by default, the rest `false`. Flip a line to change it for that project.
+
+- **Where it goes:** this file (`.claude/settings.json`) is committed and shared by everyone in the project. Put a personal choice in `.claude/settings.local.json` instead, which is git-ignored by Claude Code and overrides this file. `~/.claude/settings.json` sets the default for every project.
+- **`false` wins over a user-level install.** If you installed a plugin for your whole account, `false` here still switches it off in this project; `true` switches it on.
+- **List the groups and their members, and keep them in step.** Turning a bundle off leaves its members on, so every member has its own line. The groups are listed too: a group whose dependencies are disabled shows `failed to load`, so a group is `true` only if **all** its dependencies are. That is why `session-memory` lives in its own group, `Z-JustInCase` (off by default), instead of in `dev`. Groups come first, then the individual plugins, each part A to Z.
+- A plugin not listed is left as it is.
 
 The `hooks` block registers three hooks. Claude Code pipes a JSON description of the tool call to each script's stdin. The two `PreToolUse` hooks fire before every `Bash` call, and a script that exits with code 2 blocks the call (its stderr is shown to the agent as the reason). The `PostToolUse` hook fires after every `Write` or `Edit`, when the file is already written; there, exit code 2 can't undo anything, so its stderr is fed back to the agent as feedback on what it just did. All three are invoked with `python3`, so it needs to be on the PATH of the shell Claude Code runs in. There is no `jq` or other tool to install: the hooks read the JSON themselves.
 
@@ -653,26 +667,28 @@ A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional 
 | `domain-modeling` | model | Builds and sharpens the project glossary (`CONTEXT.md`, or one per bounded context with a `CONTEXT-MAP.md`) and records ADRs. Ships `references/CONTEXT-FORMAT.md` and `references/ADR-FORMAT.md` as the canonical formats. Also fires on its own when terminology gets sloppy. |
 | `commit-push` | you (`/commit-push`) | Dispatches `changelog-writer` and `docs-updater`, then the `commit-push` subagent. The only way a commit happens in the workflow. |
 | `claude-handoff` | you (`/claude-handoff`) | Hands the conversation to a detached background Claude Code agent that keeps working unattended — use instead of same-session `implement` when you want to walk away. Hooks still apply. |
-| `walkthrough` | you (`/walkthrough`) | Debugger-style tour of one concrete code path — a screen per step, one real value carried forward as it transforms. For understanding existing code. `references/example.md` shows the format. |
+| `handoff` | you (`/handoff`) | Compacts the current conversation into a handoff *document* another agent can pick up (unlike `claude-handoff`, which spawns a process). |
 | `doubt` | you (`/doubt`, `/x`) | Re-examines something the agent just did or claimed with structured skepticism. Ends in one of three verdicts — wrong, right, or genuine tradeoffs — never "it depends". |
 | `handcraft` | you (`/handcraft`) | Builds a feature one function at a time with you approving each step — the opposite end of the spectrum from `implement`. `scripts/executable_preflight.py` checks a target is runnable before starting. |
 | `frontend-design` | model | Aesthetic and UX guidance for the occasional UI work in `frontend/` — deliberate choices on palette, typography, layout. Self-contained: dispatches its own `code-reviewer` (and `logic-checker` if implementing a spec'd seam). |
+| `writing-for-agents` | model | How to write documents for agents: skills, `AGENTS.md`/`CLAUDE.md`, and anything an agent reaches by a pointer. `references/SKILL-MECHANICS.md` covers how skills load and trigger. Use it when adding or editing skills in the project. |
 
-### `.claude/skills/productivity_skills/`
+### Skills from the marketplace
 
-General workflow tools that aren't code-specific, with their own `README.md` roster. All are user-invoked except `writing-for-agents`.
+The template holds only the skills tied to the development process. Everything general-purpose lives in the `my-marketplaced-skills` marketplace and is enabled per project as plugins, so there is one source of truth and nothing to copy. Its README describes every skill.
 
-| Skill | What it does |
-|---|---|
-| `grill-me` | `grilling` with no repo and nothing written to disk — pure interview to sharpen a loose idea. |
-| `handoff` | Compacts the current conversation into a handoff document another agent can pick up (a document, unlike `claude-handoff`, which spawns a process). |
-| `teach` | Multi-session teaching of a skill or concept, using the current directory as a stateful workspace. `references/` define the mission, learning-record, glossary, and resources formats. |
-| `lbt` | Learning-by-teaching loop — you explain something, get told what's correct/wrong/conflated/missing, and explain again. |
-| `mvk` | Minimal Viable Knowledge — researches any field to "level-1 enthusiast lurker" depth and delivers an interactive HTML mini-site. |
-| `rp` | Roleplay QA — a context-free subagent plays a blind end user against the real product (UI/CLI/API only, no source) to find where users get stuck. `references/actor-brief.md` is the brief it's given. |
-| `to-questionnaire` | Turns a decision you can't answer alone into a Markdown questionnaire for the one person who can. |
-| `wait-what` | Fire when a message doesn't land — the agent re-pitches it in plain English using your `CONTEXT.md` vocabulary. |
-| `writing-for-agents` | (model-invoked) How to write documents for agents: skills, `AGENTS.md`/`CLAUDE.md`, and anything an agent reaches by a pointer. `references/SKILL-MECHANICS.md` covers how skills load and trigger. Use it when adding your own skills to the project. |
+| Group (plugin) | Kind | Contains | For |
+|---|---|---|---|
+| `dev` | bundle | `diagram-design`, `make-pages-interactive` | Development work. |
+| `learning` | own skills | `lbt`, `teach`, `walkthrough` | Understanding code and learning new things. |
+| `niche` | bundle | `anatomy`, `reverse-engineer-anything` | Occasional, specialised work. |
+| `presenting` | own skill + dependency | `visium-html-deck` (HTML decks in the Technical Blue or Progress Orange theme), plus `ppt-master` | Making presentations. |
+| `utilities` | own skills + dependency | `grill-me`, `mvk`, `rp`, `to-questionnaire`, `wait-what`, plus `find-skills` | General workflow tools, not code-specific. `grill-me` needs the `grilling` skill from this template. |
+| `Z-JustInCase` | bundle, off by default | `session-memory` | Interesting skills kept off for particular uses. `session-memory` is heavy (hooks, worker, MCP server) and sends session content to a model. |
+
+An own-skills group is one plugin that loads all its skills. A bundle has no skills: it lists other plugins as dependencies, so installing it installs them all and each keeps updating from its author's repo. Commands carry the plugin name (`/learning:walkthrough`, `/utilities:grill-me`). Turning a bundle **off** takes `claude plugin uninstall <bundle>` plus `claude plugin prune -y`; disabling the bundle alone leaves its members enabled. The marketplace README has the details and the per-skill descriptions.
+
+`graphify` and `rtk` are not plugins. `bootstrap-machine.sh` (repo root, not copied into projects) installs them once per machine.
 
 ### Where the workflow writes
 
