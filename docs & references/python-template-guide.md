@@ -556,7 +556,7 @@ Everything under `.claude/` is what makes a generated project *AI-native* rather
 ├── settings.json        ← registers the hooks
 ├── hooks/               ← three Python scripts: two run before every Bash call, one after every Write/Edit
 ├── agents/              ← 7 subagent definitions (+ README roster)
-└── skills/              ← 14 workflow skills (+ README roster); general-purpose skills come from the marketplace
+└── skills/              ← 15 workflow skills (+ README roster); general-purpose skills come from the marketplace
 ```
 
 The pieces compose as described in `AGENTS.md`'s **Development workflow** section. In one line: `/grill-with-docs` → `/spec` → `implement` (`tdd` + `logic-checker` + `code-reviewer`) → `/commit-push` (`changelog-writer` + `docs-updater` + `commit-push`) → PR by hand, with `diagnosing-bugs` → `debugger` as the separate track for things that are already broken, and the two hooks underneath all of it.
@@ -671,7 +671,8 @@ A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional 
 | `doubt` | you (`/doubt`, `/x`) | Re-examines something the agent just did or claimed with structured skepticism. Ends in one of three verdicts — wrong, right, or genuine tradeoffs — never "it depends". |
 | `handcraft` | you (`/handcraft`) | Builds a feature one function at a time with you approving each step — the opposite end of the spectrum from `implement`. `scripts/executable_preflight.py` checks a target is runnable before starting. |
 | `frontend-design` | model | Aesthetic and UX guidance for the occasional UI work in `frontend/` — deliberate choices on palette, typography, layout. Self-contained: dispatches its own `code-reviewer` (and `logic-checker` if implementing a spec'd seam). |
-| `writing-for-agents` | model | How to write documents for agents: skills, `AGENTS.md`/`CLAUDE.md`, and anything an agent reaches by a pointer. `references/SKILL-MECHANICS.md` covers how skills load and trigger. Use it when adding or editing skills in the project. |
+| `walkthrough` | you (`/walkthrough`) | Debugger-style tour of one concrete code path — a screen per step, one real value carried forward as it transforms. For understanding existing code. `references/example.md` shows the format. |
+| `wait-what` | you (`/wait-what`) | Fire when a message doesn't land — the agent re-pitches it in plain English using your `CONTEXT.md` vocabulary. |
 
 ### Skills from the marketplace
 
@@ -680,10 +681,10 @@ The template holds only the skills tied to the development process. Everything g
 | Group (plugin) | Kind | Contains | For |
 |---|---|---|---|
 | `dev` | bundle | `diagram-design`, `make-pages-interactive` | Development work. |
-| `learning` | own skills | `lbt`, `teach`, `walkthrough` | Understanding code and learning new things. |
+| `learning` | own skills | `lbt`, `mvk`, `teach` | Learning new things: learning-by-teaching, multi-session teaching, research mini-sites. |
 | `niche` | bundle | `anatomy`, `reverse-engineer-anything` | Occasional, specialised work. |
 | `presenting` | own skill + dependency | `visium-html-deck` (HTML decks in the Technical Blue or Progress Orange theme), plus `ppt-master` | Making presentations. |
-| `utilities` | own skills + dependency | `grill-me`, `mvk`, `rp`, `to-questionnaire`, `wait-what`, plus `find-skills` | General workflow tools, not code-specific. `grill-me` needs the `grilling` skill from this template. |
+| `utilities` | own skills + dependency | `grill-me`, `rp`, `to-questionnaire`, `writing-for-agents`, plus `find-skills` | General workflow tools, not code-specific. `grill-me` needs the `grilling` skill from this template. |
 | `Z-JustInCase` | bundle, off by default | `session-memory` | Interesting skills kept off for particular uses. `session-memory` is heavy (hooks, worker, MCP server) and sends session content to a model. |
 
 An own-skills group is one plugin that loads all its skills. A bundle has no skills: it lists other plugins as dependencies, so installing it installs them all and each keeps updating from its author's repo. Commands carry the plugin name (`/learning:walkthrough`, `/utilities:grill-me`). Turning a bundle **off** takes `claude plugin uninstall <bundle>` plus `claude plugin prune -y`; disabling the bundle alone leaves its members enabled. The marketplace README has the details and the per-skill descriptions.
@@ -742,7 +743,7 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 | `pyproject.toml` | Occasionally | When adding dependencies (through `uv add`, which pins exactly; never by hand) |
 | `frontend/decide-frontend-style.md` | Once | When you start the frontend — decide, scaffold, then delete it |
 | `frontend/package.json` | Occasionally | When adding frontend dependencies (through `npm install`, which pins exactly once `.npmrc` is set) |
-| `.claude/skills/` | Occasionally | When you add a project-specific skill — `writing-for-agents` is the guide |
+| `.claude/skills/` | Occasionally | When you add a project-specific skill — `/utilities:writing-for-agents` (marketplace, off by default) is the guide |
 | `.claude/agents/` | Rarely | When you need a new specialist or want to change a model tier |
 | `scripts/dev.sh` | Once | When the stack is chosen: fill in `BACKEND_CMD` and `FRONTEND_CMD` (product) |
 | `Makefile` | Rarely | When adding new workflow shortcuts |
