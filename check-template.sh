@@ -96,7 +96,7 @@ PY
     --data project_layout="$layout" --data use_ml="$ml" "$tpl" "$dir"
   [ -d "$dir" ] || { echo "  (stopped: nothing was rendered)" >>"$res"; return 1; }
 
-  step "files exist" expect_files AGENTS.md CLAUDE.md .copier-answers.yml .gitattributes \
+  step "files exist" expect_files AGENTS.md CLAUDE.md CONTEXT.md .copier-answers.yml .gitattributes \
     "$py/pyproject.toml" "$py/uv.lock" "$py/.python-version" \
     .vscode/settings.json .vscode/extensions.json .vscode/tasks.json
   step "branch is main" test "$(git -C "$dir" branch --show-current)" = main

@@ -191,8 +191,10 @@ It also has a **Docs** section that spells out the three kinds of documentation 
 | Location | What it holds | Written by |
 |---|---|---|
 | `CONTEXT.md` | Project glossary — resolved terminology only | `domain-modeling` / `grill-with-docs` |
-| `docs/adr/` | Architecture decision records — hard-to-reverse decisions with a real trade-off | `domain-modeling` |
-| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per piece of work: `SPEC.md`, `plan/PLAN.md`, `reports/` | `/spec`, `implement`, `debugger` |
+| `docs/ADRs/` | Architecture decision records — hard-to-reverse decisions with a real trade-off | `domain-modeling` |
+| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per piece of work: `SPEC.md`, `PLAN.md`, `REPORT.md`, all directly in the folder | `/spec`, `implement` |
+| `docs/debug/` | One report per bug investigation (`<yyyy_mm>-<slug>.md`); separate because one investigation can touch several specs | `debugger` |
+| `docs/clarifications/` | Your own scratch notes for understanding a topic; gitignored, not read by the skills unless you point at a file | you |
 | `docs/build/` | Generated API docs (gitignored) | `pdoc` via `make docs` |
 
 Fill in the description and update it as the project grows — or let the `docs-updater` subagent do it as part of `/commit-push` (see [`.claude/`](#claude)).
@@ -206,8 +208,7 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 `AGENTS.md` is the project brief for AI assistants, and the file to maintain. `AGENTS.md` is the convention most agent tools read, so the brief isn't tied to one of them. It is a template with sections to fill in and sections that are pre-filled:
 
 ```text
-## Project overview          ← fill in
-## Architecture              ← fill in
+## Domain context            ← pre-filled: where CONTEXT.md, docs/ADRs/ and the architecture live (nothing is imported)
 ## Stack & tools             ← pre-filled for the chosen layout (DVC, frontend only when present)
 ## Project layout            ← pre-filled: where Python, the UI and the shared folders live
 ## Common commands           ← pre-filled: make install / test / lint / typecheck / format
@@ -216,6 +217,19 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 ## Behavioral guidelines     ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
 ## Out of scope              ← fill in
 ```
+
+`AGENTS.md` says how to work in the project; it does not hold the project overview or the out-of-scope notes. Those live in `CONTEXT.md`, together with the domain glossary. The *Domain context* section only says where things are, and nothing is imported, so `CONTEXT.md` is not loaded in every session: the skills that need the domain language (`tdd`, `debugger`, `code-reviewer`, `wait-what`, the grilling pair) read it when they run, and a plain conversation reads it only if the agent follows the pointer. If you ever want it always loaded, add a line `@CONTEXT.md` to `AGENTS.md`: Claude Code expands `@path` imports at launch (tested), at the cost of the whole glossary in every session.
+
+**Where each kind of knowledge lives:**
+
+| What | Where | Loaded |
+|---|---|---|
+| How to work here: stack, layout, commands, rules | `AGENTS.md` | Every session |
+| What the project is, what it is not, domain terms | `CONTEXT.md` | By the skills that need it |
+| High-level architecture (parts and data flow) | `README.md`, *Architecture* section (kept current by `docs-updater`) | When someone reads it |
+| Hard-to-reverse decisions and their trade-offs | `docs/ADRs/`, one file per decision | By the skills, for the area they touch |
+
+ADRs are deliberately not imported or listed anywhere: there can be dozens, and the value is reading only the ones for the area being changed. `AGENTS.md` names the folder, and `domain-modeling`, `tdd`, `debugger` and `code-reviewer` check it themselves.
 
 The *Project layout* section matters in `product` projects: it tells the agent that Python lives in `backend/` and that tooling runs from there (or through `make`, which does it for you).
 
@@ -663,7 +677,7 @@ A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional 
 | `tdd` | model | Red-green test-driven development, one seam at a time — what a good test looks like, mocking at boundaries only, plus ML-specific rules (tolerance-based float assertions, checked-in fixtures, seeding, flaky-test handling). |
 | `diagnosing-bugs` | model | Triages a bug report or a half-built feature into confirmed bugs (→ `debugger`, one at a time) vs. pieces that were never built (→ `/spec` + `implement`), then dispatches. Includes a `scripts/hitl-loop.template.sh` for human-in-the-loop repro loops. |
 | `grilling` | model | The interview engine: questions the user relentlessly about a plan until nothing is silently assumed. Backs `grill-me` and `grill-with-docs`; dispatches `context-scout` when a question needs a fact. |
-| `grill-with-docs` | you (`/grill-with-docs`) | `grilling`, grounded in this repo — writes resolved vocabulary to `CONTEXT.md` and hard decisions to `docs/adr/` as it goes (via `domain-modeling`). |
+| `grill-with-docs` | you (`/grill-with-docs`) | `grilling`, grounded in this repo — writes resolved vocabulary to `CONTEXT.md` and hard decisions to `docs/ADRs/` as it goes (via `domain-modeling`). |
 | `domain-modeling` | model | Builds and sharpens the project glossary (`CONTEXT.md`, or one per bounded context with a `CONTEXT-MAP.md`) and records ADRs. Ships `references/CONTEXT-FORMAT.md` and `references/ADR-FORMAT.md` as the canonical formats. Also fires on its own when terminology gets sloppy. |
 | `commit-push` | you (`/commit-push`) | Dispatches `changelog-writer` and `docs-updater`, then the `commit-push` subagent. The only way a commit happens in the workflow. |
 | `claude-handoff` | you (`/claude-handoff`) | Hands the conversation to a detached background Claude Code agent that keeps working unattended — use instead of same-session `implement` when you want to walk away. Hooks still apply. |
@@ -695,12 +709,14 @@ An own-skills group is one plugin that loads all its skills. A bundle has no ski
 
 The skills produce durable artefacts outside `.claude/`, all committed:
 
-- `CONTEXT.md` (project root) — the glossary. Resolved terminology only, no implementation details.
-- `docs/adr/` — one file per architecture decision record.
-- `docs/specs/<type>-<yyyy_mm>-<name>/` — `SPEC.md`, `plan/PLAN.md`, and `reports/NNNN-<implement|debugger>.md`, one folder per piece of work.
+- `CONTEXT.md` (project root) — the glossary. Resolved terminology only, no implementation details. Ships as a skeleton (the project description plus an empty *Language* section) that the skills fill in.
+- `docs/ADRs/` — one file per architecture decision record.
+- `docs/specs/<type>-<yyyy_mm>-<name>/` — `SPEC.md`, `PLAN.md` and `REPORT.md`, all directly in the folder, one folder per piece of work.
+- `docs/debug/<yyyy_mm>-<slug>.md` — one report per bug investigation, written by `debugger`.
+- `docs/clarifications/` — your own scratch notes; gitignored, so never committed.
 - `CHANGELOG.md` and `README.md` — kept current by `changelog-writer` and `docs-updater` on every `/commit-push`.
 
-None of these exist in a fresh project; `docs/` ships as an empty `.gitkeep` folder and the skills create the subfolders on first use.
+Except for the `CONTEXT.md` skeleton, none of these exist in a fresh project; `docs/` ships as an empty `.gitkeep` folder and the skills create the subfolders on first use.
 
 ---
 

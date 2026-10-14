@@ -107,13 +107,13 @@ When generation finishes, Copier prints the next steps for the layout you chose 
 - No Docker files: images are specific to each project, so they aren't templated
 
 **AI-native development (Claude Code)**
-- `AGENTS.md` — project brief plus a *Development workflow* section mapping how the skills, subagents, and hooks compose end to end. Any agent tool can read it
+- `AGENTS.md` — how to work in the project (stack, layout, commands, guidelines), points to `CONTEXT.md`, `docs/ADRs/` and the architecture section of the README, plus a *Development workflow* section mapping how the skills, subagents, and hooks compose end to end. Any agent tool can read it
 - `CLAUDE.md` — imports `AGENTS.md` (`@AGENTS.md`) so Claude Code loads the same brief, since it reads `CLAUDE.md` and not `AGENTS.md`, plus an empty *Claude Code specifics* section for instructions that only apply to Claude Code
 - `.claude/settings.json` — registers the two `PreToolUse` guard hooks and the `PostToolUse` formatter, plus the marketplace and a per-project on/off list (`enabledPlugins`: the `dev`, `learning` and `presenting` groups on, the rest off) for the general-purpose skills
 - `.claude/hooks/` — `test_gate.py` (no `git commit` until `make test` passes, no override), `destructive_guard.py` (blocks `rm -rf` on dangerous paths, `git reset --hard`, force-pushes to `main`, etc.) and `format_python.py` (runs the project's own `ruff format` on every Python file the agent writes; plain Python, no `jq` needed)
 - `.claude/agents/` — 7 subagents: `context-scout`, `code-reviewer`, `logic-checker`, `changelog-writer`, `docs-updater`, `commit-push`, `debugger`
 - `.claude/skills/` — 15 skills (`spec`, `implement`, `tdd`, `diagnosing-bugs`, `grill-with-docs`, `grilling`, `domain-modeling`, `commit-push`, `claude-handoff`, `handoff`, `doubt`, `handcraft`, `frontend-design`, `walkthrough`, `wait-what`). General-purpose skills are not copied: they come from the `my-marketplaced-skills` marketplace as groups (`dev`, `learning`, `niche`, `presenting`, `utilities`, `Z-JustInCase`) enabled per project
-- `docs/specs/` and `docs/adr/` conventions, and a project glossary (`CONTEXT.md`) maintained by the skills
+- `docs/specs/` and `docs/ADRs/` conventions, and a project glossary (`CONTEXT.md`, shipped as a skeleton) maintained by the skills
 - `.github/PULL_REQUEST_TEMPLATE.md` — one structure (Why, What changes, For review, Deploy impact, Verification, Known gaps, After merging) written for people and agents alike
 - `.github/ISSUE_TEMPLATE/` — bug report, feature request and task templates in the same style: an instruction header, "delete what doesn't apply", `[x]` only for what actually ran, and a *Done when* checklist
 
@@ -128,7 +128,7 @@ See [python-template-guide.md](docs%20%26%20references/python-template-guide.md)
 
 ## The AI-native workflow in one paragraph
 
-For anything bigger than a one-line fix: `/grill-with-docs` to clarify a loose idea (writing terms to `CONTEXT.md` and hard decisions to `docs/adr/`) → `/spec` to write `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md` + a seam-organized `plan/PLAN.md` and cut a branch → `implement` runs automatically after, doing `tdd` at each seam with `logic-checker` and a final `code-reviewer` pass, writing reports to the spec's `reports/` → `/commit-push` dispatches `changelog-writer` and `docs-updater`, then commits (split logically if large) and pushes → you open the PR. Bugs take a separate track through `diagnosing-bugs` → the `debugger` subagent (Opus, skeptical mindset). Two hooks run underneath all of it: no commit without green tests, and no destructive shell commands. Full rosters live in the generated project's `.claude/skills/README.md` and `.claude/agents/README.md`.
+For anything bigger than a one-line fix: `/grill-with-docs` to clarify a loose idea (writing terms to `CONTEXT.md` and hard decisions to `docs/ADRs/`) → `/spec` to write `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md` + a seam-organized `PLAN.md` and cut a branch → `implement` runs automatically after, doing `tdd` at each seam with `logic-checker` and a final `code-reviewer` pass, writing `REPORT.md` in the spec folder → `/commit-push` dispatches `changelog-writer` and `docs-updater`, then commits (split logically if large) and pushes → you open the PR. Bugs take a separate track through `diagnosing-bugs` → the `debugger` subagent (Opus, skeptical mindset). Two hooks run underneath all of it: no commit without green tests, and no destructive shell commands. Full rosters live in the generated project's `.claude/skills/README.md` and `.claude/agents/README.md`.
 
 ---
 
@@ -196,6 +196,7 @@ python-template/
     ├── Makefile.jinja
     ├── AGENTS.md.jinja                 ← project brief for any agent
     ├── CLAUDE.md                       ← imports AGENTS.md; Claude Code specifics
+    ├── CONTEXT.md.jinja                ← domain glossary skeleton, filled in by the skills
     ├── README.md.jinja
     ├── CHANGELOG.md
     ├── .gitattributes

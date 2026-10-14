@@ -35,4 +35,4 @@ _Avoid_: Client, buyer, account
 
 **Multiple contexts:** A `CONTEXT-MAP.md` at the repo root lists the contexts, where they live, and how they relate to each other.
 
-If neither exists, create a root `CONTEXT.md` lazily when the first term is resolved.
+The template ships a root `CONTEXT.md` as a skeleton (a description and an empty *Language* section): add terms to it as they are resolved. If neither file exists, create a root `CONTEXT.md`.

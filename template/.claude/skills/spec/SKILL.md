@@ -18,7 +18,9 @@ Each spec gets its own folder: `docs/specs/<type>-<yyyy_mm>-<name>/`, where `<ty
 - `plan/PLAN.md` — the task breakdown `implement` works through (step 5 below).
 - `reports/` — created lazily, the first time `implement` or `debugger` finishes a run against this spec. Each run adds one file, named `NNNN-<skill>.md` (zero-padded, e.g. `0001-implement.md`, `0002-debugger.md`), numbered in the order they're written. Not created by this skill.
 
-This is deliberately separate from `CONTEXT.md` and `docs/adr/`, which stay project-wide (see `domain-modeling`). Those record what's permanently true about the domain, shared and reused across every spec; a spec's own `plan/` and `reports/` record that one piece of work's task breakdown and execution history, and aren't relevant to any other spec.
+Everything sits directly in the spec folder: no `plan/` or `reports/` subfolders. Expect one plan and one or two reports per spec, not a growing history. Debugging does not write here: `debugger` reports go to `docs/debug/`, because one investigation can touch several specs.
+
+This is deliberately separate from `CONTEXT.md` and `docs/ADRs/`, which stay project-wide (see `domain-modeling`). Those record what's permanently true about the domain, shared and reused across every spec; a spec's own `PLAN.md` and `REPORT.md` record that one piece of work's task breakdown and outcome, and aren't relevant to any other spec.
 
 ## Process
 

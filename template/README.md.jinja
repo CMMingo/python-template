@@ -75,8 +75,10 @@ Dependencies are not written by hand: they were resolved to their latest version
 {%- endif %}
 ├── logs/                       # runtime logs (gitignored)
 ├── docs/
-│   ├── specs/                  # per-spec folders: SPEC.md, plan/, reports/ (committed -- see /spec)
-│   ├── adr/                    # architecture decision records (committed -- see domain-modeling)
+│   ├── specs/                  # one folder per spec: SPEC.md, PLAN.md, REPORT.md (committed -- see /spec)
+│   ├── ADRs/                   # architecture decision records (committed -- see domain-modeling)
+│   ├── debug/                  # one report per bug investigation (committed -- see diagnosing-bugs)
+│   ├── clarifications/         # personal notes while learning a topic (gitignored)
 │   └── build/                  # generated API docs from `make docs` (gitignored)
 {%- if project_layout == 'simple' %}
 ├── pyproject.toml              # dependencies pinned exactly
@@ -86,11 +88,18 @@ Dependencies are not written by hand: they were resolved to their latest version
 ├── Makefile
 ├── AGENTS.md                   # project context for AI assistants
 ├── CLAUDE.md                   # Claude Code entry point: imports AGENTS.md
+├── CONTEXT.md                  # domain glossary, filled in by the skills
 └── CHANGELOG.md
 ```
 {% if project_layout == 'product' %}
 `config/`, `logs/`{{ ", `data/`, `runs/` and `notebooks/`" if use_ml }} stay at the repo root and are shared by every part of the product; the code in `backend/` finds them by anchoring to the repo root, not to the working directory.
 {% endif %}
+---
+
+## Architecture
+
+<!-- The main parts of the system and how data flows between them: a short paragraph or a small diagram. Keep it high level. Hard-to-reverse decisions are recorded as ADRs in docs/ADRs/, not here. -->
+
 ---
 
 ## Docs
@@ -100,8 +109,10 @@ This project keeps three different kinds of documentation, each with its own pur
 | Location | What it holds | Scope | Written by |
 |---|---|---|---|
 | `CONTEXT.md` | Project glossary -- resolved terminology only, no implementation details. | Project-wide (or one per bounded context, via `CONTEXT-MAP.md`); reused across every spec. | `domain-modeling` / `grill-with-docs` |
-| `docs/adr/` | Architecture decision records -- hard-to-reverse, non-obvious decisions with a real trade-off behind them. | Project-wide, same lifecycle as `CONTEXT.md`. | `domain-modeling` |
-| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per spec (`<type>` is `feat`, `fix`, or `refactor`): `SPEC.md` (problem, solution, decisions), `plan/PLAN.md` (a seam-organized task breakdown), and `reports/` (one numbered file per `implement`/`debugger` run against it, e.g. `0001-implement.md`). | Per spec -- that piece of work's own task list and execution history, not shared with any other spec. | `/spec`, `implement`, `debugger` |
+| `docs/ADRs/` | Architecture decision records -- hard-to-reverse, non-obvious decisions with a real trade-off behind them. | Project-wide, same lifecycle as `CONTEXT.md`. | `domain-modeling` |
+| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per spec (`<type>` is `feat`, `fix`, or `refactor`): `SPEC.md` (problem, solution, decisions), `PLAN.md` (a seam-organized task breakdown), and `REPORT.md` (what `implement` did, updated in place). All three sit directly in the folder. | Per spec -- that piece of work's own task list and outcome, not shared with any other spec. | `/spec`, `implement` |
+| `docs/debug/` | One report per bug investigation, `<yyyy_mm>-<slug>.md`: the hypotheses tested, the diagnosis and the fix. Separate from specs because one investigation can touch several of them. | Per bug. | `debugger` |
+| `docs/clarifications/` | Personal scratch notes for understanding a new topic while working on a task. Gitignored: never committed, and not read by the skills unless you point at a file. | Just you. | You |
 | `docs/build/` | Generated API docs (gitignored). | Rebuilt on demand. | `pdoc`, via `make docs` |
 
 See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full spec-to-implementation workflow, and [.claude/skills/domain-modeling/SKILL.md](.claude/skills/domain-modeling/SKILL.md) for how `CONTEXT.md` and ADRs get built and maintained.
