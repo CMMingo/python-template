@@ -4,7 +4,7 @@ description: Implement the work described in a spec end to end -- loops through 
 disable-model-invocation: true
 ---
 
-You've been handed a spec (usually just-written, `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md`, on its own branch) and asked to actually build it: one continuous run of implementation, checks, and review that keeps going seam by seam until the whole spec is done -- not a single step that stops and waits.
+You've been handed a spec (usually just-written, `docs/specs/<type>_<name>/SPEC.md`, on its own branch) and asked to actually build it: one continuous run of implementation, checks, and review that keeps going seam by seam until the whole spec is done -- not a single step that stops and waits.
 
 ## Process
 
@@ -17,7 +17,7 @@ You've been handed a spec (usually just-written, `docs/specs/<type>-<yyyy_mm>-<n
 4. Once every seam in *Testing Decisions* is covered and the full suite passes, do a deliberate refactor pass over whatever `tdd`'s loop flagged as a larger opportunity (duplication across seams, a naming inconsistency, structure that only makes sense once you can see the whole feature) -- then re-run the full suite to confirm nothing broke. Skip this step if nothing of that kind was flagged; it's not busywork for its own sake.
 5. Dispatch the `code-reviewer` subagent for an independent pass over the resulting diff.
 6. If `code-reviewer` finds something real, fix it and re-run the full suite before considering the work done.
-7. Write the report to `docs/specs/<type>-<yyyy_mm>-<name>/REPORT.md` (create it on the first run against this spec; on a later run, update it in place and add a dated section rather than creating another file -- see the `spec` skill's "Where things live" section). Cover: what was implemented per seam, anything `logic-checker`/`code-reviewer` flagged and how it was resolved, any assumptions made and why, final test/lint/typecheck status, and anything left for later. Write it for someone with zero context on this conversation.
+7. Write the report to `docs/specs/<type>_<name>/REPORT.md` (create it on the first run against this spec; on a later run, update it in place and add a dated section rather than creating another file -- see the `spec` skill's "Where things live" section). Cover: what was implemented per seam, anything `logic-checker`/`code-reviewer` flagged and how it was resolved, any assumptions made and why, final test/lint/typecheck status, and anything left for later. Write it for someone with zero context on this conversation.
 8. Stop there. Report in the conversation what was implemented, that tests pass, and that it's been reviewed -- then say it's ready for `/commit-push`. Don't commit or push yourself; that's a deliberate, separately-triggered step.
 
 ## Rules

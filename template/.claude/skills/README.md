@@ -4,7 +4,7 @@
 
 Reachable only when you type them (Claude Code: `disable-model-invocation: true`).
 
-- **[spec](./spec/SKILL.md)**: Turn a feature request into a written spec (`docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md`, plus a seam-organized `PLAN.md` task breakdown) before implementation starts — bounded clarifying questions, then a seam check, then the write-up.
+- **[spec](./spec/SKILL.md)**: Turn a feature request into a written spec (`docs/specs/<type>_<name>/SPEC.md`, plus a seam-organized `PLAN.md` task breakdown) before implementation starts — bounded clarifying questions, then a seam check, then the write-up.
 - **[grill-with-docs](./grill-with-docs/SKILL.md)**: The same interview, grounded in this repo — writes resolved vocabulary to `CONTEXT.md` and hard decisions to `docs/ADRs/` as it goes.
 - **[commit-push](./commit-push/SKILL.md)**: Run `changelog-writer`/`docs-updater` to bring the docs up to date, then stage, commit (splitting into several logical commits if the diff is large), and push. Thin trigger for the `commit-push` subagent -- invoke-only, never fires on its own.
 - **[implement](./implement/SKILL.md)**: Implement a written spec end to end -- loops through `tdd` at each agreed seam, checks running throughout, `PLAN.md` and `REPORT.md` kept current as it goes, until every seam's covered and an independent `code-reviewer` pass is clean. Never pauses between seams for a go-ahead. Continues automatically right after `/spec`, in the same conversation, by default; use `claude-handoff` instead when you want to close the session and have it keep going unattended. Stops short of committing -- that's `/commit-push`.

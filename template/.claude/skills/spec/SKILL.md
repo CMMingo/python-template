@@ -12,7 +12,7 @@ Two things kill specs in practice: interviews that never end, and specs that inv
 
 ## Where things live
 
-Each spec gets its own folder: `docs/specs/<type>-<yyyy_mm>-<name>/`, where `<type>` is `feat`, `fix`, or `refactor` (a bug report and a bug fix are both `fix` — there's no separate `bug` type), `<yyyy_mm>` is the year and month the spec was created, and `<name>` is a short kebab-case name (e.g. `docs/specs/feat-2026_09-multi-edit/`). Inside:
+Each spec gets its own folder: `docs/specs/<type>_<name>/`, where `<type>` is `feat`, `fix`, or `refactor` (a bug report and a bug fix are both `fix` — there's no separate `bug` type), and `<name>` is a short kebab-case name, joined to the type with an underscore (e.g. `docs/specs/feat_multi-edit/`). There is no date in the name: git already records when it was created. If a folder with that name already exists, pick a more specific name rather than reusing it. Inside:
 
 - `SPEC.md` — the spec itself (step 4 below).
 - `PLAN.md` — the task breakdown `implement` works through (step 5 below). One file, updated in place.
@@ -42,7 +42,7 @@ State the seam(s) to the user and get a quick confirmation before writing the sp
 
 ### 4. Write the spec
 
-Save it as `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md` — see "Where things live" above for the folder convention. Using a folder per spec, rather than a single shared file, means old specs stay around as a record instead of getting overwritten by the next feature — worth it the first time you want to remember why something was built a particular way.
+Save it as `docs/specs/<type>_<name>/SPEC.md` — see "Where things live" above for the folder convention. Using a folder per spec, rather than a single shared file, means old specs stay around as a record instead of getting overwritten by the next feature — worth it the first time you want to remember why something was built a particular way.
 
 Use this template. Every section should reflect something actually said or found — if a section would otherwise be empty or invented, say so explicitly rather than padding it out.
 
@@ -86,7 +86,7 @@ Anything else worth recording — including, explicitly, any assumption made in 
 
 ### 5. Write the plan
 
-Before implementation starts, break the spec into a task list at `docs/specs/<type>-<yyyy_mm>-<name>/PLAN.md` — the first concrete thing built off the spec, and what `implement` actually works through.
+Before implementation starts, break the spec into a task list at `docs/specs/<type>_<name>/PLAN.md` — the first concrete thing built off the spec, and what `implement` actually works through.
 
 Organize it by seam, not as a flat list: for each seam named in *Testing Decisions*, nest under it the tasks that prove it, in the order they need to happen. A seam is *where* the feature gets verified from the outside (an interface boundary that survives a rewrite); a task is a *unit of work* toward proving one — a red test, the implementation that turns it green, maybe supporting plumbing. Most seams expand into a handful of tasks, not one. Some tasks won't serve any single seam (shared setup, a migration, config) — put those in their own bucket rather than forcing them under a seam they don't belong to.
 
@@ -111,7 +111,7 @@ Keep tasks small and concrete enough that "done" is unambiguous, and use checkbo
 
 ### 6. Create a branch
 
-Create and check out a new branch mirroring the spec folder's identifier: `feat/<yyyy_mm>-<name>`, `fix/<yyyy_mm>-<name>`, or `refactor/<yyyy_mm>-<name>`, matching the spec folder's `<type>`. If a branch already exists for this exact piece of work (e.g. you're resuming), check it out instead of creating a duplicate.
+Create and check out a new branch mirroring the spec folder's identifier: `feat/<name>`, `fix/<name>`, or `refactor/<name>`, matching the spec folder's `<type>`. If a branch already exists for this exact piece of work (e.g. you're resuming), check it out instead of creating a duplicate.
 
 ### 7. Hand off
 

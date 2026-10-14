@@ -25,7 +25,7 @@ If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The ma
 
 Create files lazily: only when you have something to write. `CONTEXT.md` ships with the template as a skeleton (a description and an empty *Language* section): add terms to it. If it has been deleted, recreate it when the next term is resolved. If no `docs/ADRs/` exists, create it when the first ADR is needed.
 
-This is project-wide, not per-spec: one `CONTEXT.md` (or one per bounded context, via `CONTEXT-MAP.md`) and one `docs/ADRs/`, reused and built on across every spec -- the whole value is accumulated shared vocabulary and decisions. Don't confuse this with a spec's own `docs/specs/<type>-<yyyy_mm>-<name>/plan/` and `reports/` folders (see the `spec` skill): those record one piece of work's task breakdown and execution history, not domain knowledge, and there's a fresh one per spec.
+This is project-wide, not per-spec: one `CONTEXT.md` (or one per bounded context, via `CONTEXT-MAP.md`) and one `docs/ADRs/`, reused and built on across every spec -- the whole value is accumulated shared vocabulary and decisions. Don't confuse this with a spec's own `docs/specs/<type>_<name>/plan/` and `reports/` folders (see the `spec` skill): those record one piece of work's task breakdown and execution history, not domain knowledge, and there's a fresh one per spec.
 
 ## During the session
 

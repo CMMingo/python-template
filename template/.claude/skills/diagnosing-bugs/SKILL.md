@@ -25,8 +25,8 @@ Before dispatching, give it:
 
 - The exact symptom for *this one item* (verbatim, from the user's description or from Triage above -- don't paraphrase it away).
 - How to reproduce the environment (dev server running, which branch, any relevant recent changes).
-- Whether a branch already exists for this fix -- if not, tell it to create and check out `fix/<yyyy_mm>-<slug>` first.
-- **If a spec exists for this work** (`docs/specs/<type>-<yyyy_mm>-<name>/` -- either this bug surfaced while implementing it, Triage found it inside one, or one already covers the affected area), pass its folder path. Its `SPEC.md`'s *Implementation Decisions* and *Testing Decisions* sections tell `debugger` what's supposed to be true, which sharpens its hypotheses instead of making it reconstruct intent from scratch. Either way, `debugger` writes its report to `docs/debug/<yyyy_mm>-<slug>.md` (not into a spec folder, since one investigation can touch several specs) -- you don't need to create anything first.
+- Whether a branch already exists for this fix -- if not, tell it to create and check out `fix/<slug>` first.
+- **If a spec exists for this work** (`docs/specs/<type>_<name>/` -- either this bug surfaced while implementing it, Triage found it inside one, or one already covers the affected area), pass its folder path. Its `SPEC.md`'s *Implementation Decisions* and *Testing Decisions* sections tell `debugger` what's supposed to be true, which sharpens its hypotheses instead of making it reconstruct intent from scratch. Either way, `debugger` writes its report to `docs/debug/<slug>.md` (not into a spec folder, since one investigation can touch several specs) -- you don't need to create anything first.
 
 If Triage produced more than one confirmed-broken item, repeat Dispatch for each in turn -- don't run them concurrently against the same working tree.
 

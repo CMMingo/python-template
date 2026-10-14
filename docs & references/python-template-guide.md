@@ -192,8 +192,8 @@ It also has a **Docs** section that spells out the three kinds of documentation 
 |---|---|---|
 | `CONTEXT.md` | Project glossary — resolved terminology only | `domain-modeling` / `grill-with-docs` |
 | `docs/ADRs/` | Architecture decision records — hard-to-reverse decisions with a real trade-off | `domain-modeling` |
-| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per piece of work: `SPEC.md`, `PLAN.md`, `REPORT.md`, all directly in the folder | `/spec`, `implement` |
-| `docs/debug/` | One report per bug investigation (`<yyyy_mm>-<slug>.md`); separate because one investigation can touch several specs | `debugger` |
+| `docs/specs/<type>_<name>/` | One folder per piece of work: `SPEC.md`, `PLAN.md`, `REPORT.md`, all directly in the folder | `/spec`, `implement` |
+| `docs/debug/` | One report per bug investigation (`<slug>.md`); separate because one investigation can touch several specs | `debugger` |
 | `docs/clarifications/` | Your own scratch notes for understanding a topic; gitignored, not read by the skills unless you point at a file | you |
 | `docs/build/` | Generated API docs (gitignored) | `pdoc` via `make docs` |
 
@@ -211,7 +211,7 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 ## Domain context            ← pre-filled: where CONTEXT.md, docs/ADRs/ and the architecture live (nothing is imported)
 ## Stack & tools             ← pre-filled for the chosen layout (DVC, frontend only when present)
 ## Project layout            ← pre-filled: where Python, the UI and the shared folders live
-## Common commands           ← pre-filled: make install / test / lint / typecheck / format
+## Common commands           ← pre-filled: every make target, with when to use it
 ## Development workflow      ← pre-filled: how the skills, subagents and hooks compose
 ## General guidelines        ← pre-filled: dev philosophy, tooling rules, constraints
 ## Behavioral guidelines     ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
@@ -671,7 +671,7 @@ A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional 
 
 | Skill | Invoked by | What it does |
 |---|---|---|
-| `spec` | you (`/spec`) | Turns a feature request into `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md` plus a seam-organized `PLAN.md`, after a bounded round of clarifying questions and a seam check. Creates the matching `feat/`, `fix/`, or `refactor/` branch. Continues straight into `implement` by default. |
+| `spec` | you (`/spec`) | Turns a feature request into `docs/specs/<type>_<name>/SPEC.md` plus a seam-organized `PLAN.md`, after a bounded round of clarifying questions and a seam check. Creates the matching `feat/`, `fix/`, or `refactor/` branch. Continues straight into `implement` by default. |
 | `implement` | you (`/implement`, or via `/spec`) | Works through the plan seam by seam: `tdd` at each seam, `logic-checker` before each seam's test confirms green, `make test`/`lint`/`typecheck` throughout, `PLAN.md` checked off, a short report per seam in the conversation and a final `REPORT.md` in the spec folder. Ends with an optional refactor pass and an independent `code-reviewer` pass. Never pauses for confirmation; never commits. |
 | `tdd` | model | Red-green test-driven development, one seam at a time — what a good test looks like, mocking at boundaries only, plus ML-specific rules (tolerance-based float assertions, checked-in fixtures, seeding, flaky-test handling). |
 | `diagnosing-bugs` | model | Triages a bug report or a half-built feature into confirmed bugs (→ `debugger`, one at a time) vs. pieces that were never built (→ `/spec` + `implement`), then dispatches. Includes a `scripts/hitl-loop.template.sh` for human-in-the-loop repro loops. |
@@ -710,8 +710,8 @@ The skills produce durable artefacts outside `.claude/`, all committed:
 
 - `CONTEXT.md` (project root) — the glossary. Resolved terminology only, no implementation details. Ships as a skeleton (the project description plus an empty *Language* section) that the skills fill in.
 - `docs/ADRs/` — one file per architecture decision record.
-- `docs/specs/<type>-<yyyy_mm>-<name>/` — `SPEC.md`, `PLAN.md` and `REPORT.md`, all directly in the folder, one folder per piece of work.
-- `docs/debug/<yyyy_mm>-<slug>.md` — one report per bug investigation, written by `debugger`.
+- `docs/specs/<type>_<name>/` — `SPEC.md`, `PLAN.md` and `REPORT.md`, all directly in the folder, one folder per piece of work.
+- `docs/debug/<slug>.md` — one report per bug investigation, written by `debugger`.
 - `docs/clarifications/` — your own scratch notes; gitignored, so never committed.
 - `CHANGELOG.md` and `README.md` — kept current by `changelog-writer` and `docs-updater` on every `/commit-push`.
 

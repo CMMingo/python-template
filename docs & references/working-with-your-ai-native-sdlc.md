@@ -23,7 +23,7 @@ The other failure mode: the opposite. Treating a spec as a formality to rush thr
 For anything beyond a one-line fix:
 
 1. **`/grill-with-docs`** if the idea isn't already concrete — this is your default now, not `/grill-me` (you already made that call: `grill-me` doesn't ground itself in the repo or leave anything behind for the next step, so unless you're exploring something genuinely repo-agnostic, use the one that does).
-2. **`/spec`** — writes `docs/specs/<type>-<yyyy_mm>-<name>/SPEC.md` and `PLAN.md`, agrees the seam(s), creates the branch. Push back if it's inventing scope you didn't ask for; that's exactly the failure mode it's built to avoid, but it's not infallible.
+2. **`/spec`** — writes `docs/specs/<type>_<name>/SPEC.md` and `PLAN.md`, agrees the seam(s), creates the branch. Push back if it's inventing scope you didn't ask for; that's exactly the failure mode it's built to avoid, but it's not infallible.
 3. **`implement`** (or `claude-handoff` — see §3) — builds it, seam by seam, looping on its own until the whole spec is done, with `logic-checker` catching "passes the test but isn't what you asked for" and `code-reviewer` catching "works but has a real problem" at the end.
 4. **`/commit-push`** — deliberately, when you decide the work's done. Never automatic.
 5. **`changelog-writer` / `docs-updater`** — keep docs honest, low-stakes, cheap to run often.

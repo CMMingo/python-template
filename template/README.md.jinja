@@ -112,8 +112,8 @@ This project keeps several kinds of documentation, each with its own purpose, sc
 |---|---|---|---|
 | `CONTEXT.md` | Project glossary -- resolved terminology only, no implementation details. | Project-wide (or one per bounded context, via `CONTEXT-MAP.md`); reused across every spec. | `domain-modeling` / `grill-with-docs` |
 | `docs/ADRs/` | Architecture decision records -- hard-to-reverse, non-obvious decisions with a real trade-off behind them. | Project-wide, same lifecycle as `CONTEXT.md`. | `domain-modeling` |
-| `docs/specs/<type>-<yyyy_mm>-<name>/` | One folder per spec (`<type>` is `feat`, `fix`, or `refactor`): `SPEC.md` (problem, solution, decisions), `PLAN.md` (a seam-organized task breakdown), and `REPORT.md` (what `implement` did, updated in place). All three sit directly in the folder. | Per spec -- that piece of work's own task list and outcome, not shared with any other spec. | `/spec`, `implement` |
-| `docs/debug/` | One report per bug investigation, `<yyyy_mm>-<slug>.md`: the hypotheses tested, the diagnosis and the fix. Separate from specs because one investigation can touch several of them. | Per bug. | `debugger` |
+| `docs/specs/<type>_<name>/` | One folder per spec (`<type>` is `feat`, `fix`, or `refactor`): `SPEC.md` (problem, solution, decisions), `PLAN.md` (a seam-organized task breakdown), and `REPORT.md` (what `implement` did, updated in place). All three sit directly in the folder. | Per spec -- that piece of work's own task list and outcome, not shared with any other spec. | `/spec`, `implement` |
+| `docs/debug/` | One report per bug investigation, `<slug>.md`: the hypotheses tested, the diagnosis and the fix. Separate from specs because one investigation can touch several of them. | Per bug. | `debugger` |
 | `docs/clarifications/` | Personal scratch notes for understanding a new topic while working on a task. Gitignored: never committed, and not read by the skills unless you point at a file. | Just you. | You |
 | `docs/build/` | Generated API docs (gitignored). | Rebuilt on demand. | `pdoc`, via `make docs` |
 
@@ -133,7 +133,7 @@ See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full sp
 {%- endif %}
 | `make test` | Run the tests{{ " (backend + frontend)" if project_layout == 'product' }} |
 | `make lint` | Run the linters and the type check |
-| `make fix` | Lint with auto-fix |
+| `make fix` | Lint with auto-fix, then format |
 | `make format` | Format the code |
 | `make docs` | Generate HTML docs into `docs/build/` |
 
@@ -144,7 +144,8 @@ The complete list, with the fast and per-part variants, is in [AGENTS.md](AGENTS
 ```bash
 make dvc-pull    # pull data and artifacts from the DVC remote
 make dvc-repro   # reproduce the full pipeline
-uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc repro <stage_name>   # one stage
+# Any other dvc command has no make target: run it without make, e.g. one stage:
+uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc repro <stage_name>
 ```
 {% endif %}
 ---
