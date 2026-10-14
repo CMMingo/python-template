@@ -123,65 +123,30 @@ See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full sp
 
 ## Commands
 
-### Environment
+`make help` lists every target. The ones you will use most:
 
 | Command | What it does |
 |---|---|
-| `make setup` | Bootstrap a fresh clone — checks the required tools, installs deps and the pre-commit hook{{ ', initialises DVC' if use_ml }}, creates `.env` |
-| `make install` | Install dependencies and the pre-commit hook (assumes uv is already installed) |
-| `make sync` | Install the Python dependencies from the lockfile |
+| `make setup` | Bootstrap a fresh clone: check the tools, install dependencies and the pre-commit hook{{ ", initialise DVC" if use_ml }}, create `.env` |
 {%- if project_layout == 'product' %}
-| `make dev` | Start the backend and frontend dev servers (fill in the two commands in `scripts/dev.sh` once the stack is chosen) |
+| `make dev` | Start the backend and frontend dev servers (fill in `scripts/dev.sh` once the stack is chosen) |
 {%- endif %}
+| `make test` | Run the tests{{ " (backend + frontend)" if project_layout == 'product' }} |
+| `make lint` | Run the linters and the type check |
+| `make fix` | Lint with auto-fix |
+| `make format` | Format the code |
+| `make docs` | Generate HTML docs into `docs/build/` |
 
-### Code quality
-
-| Command | Description |
-|---|---|
-| `make test` | Run {{ 'all tests (backend + frontend)' if project_layout == 'product' else 'tests with coverage report' }} |
-| `make test-py` | Run the Python tests with coverage |
-| `make test-fast` | Run the Python tests without coverage |
-| `make lint` | {{ 'Ruff, ty and the frontend linter' if project_layout == 'product' else 'Ruff and ty' }} |
-| `make lint-py` | Lint Python with Ruff |
-{%- if project_layout == 'product' %}
-| `make test-frontend` | Run the frontend tests (vitest) |
-| `make lint-frontend` | Lint the frontend |
-{%- endif %}
-| `make typecheck` | Type-check with ty |
-| `make format` | Format with Ruff |
-| `make format-check` | Check formatting without changing files |
-| `make fix` | Lint, auto-fix, and format in one step |
-| `make pre-commit` | Run all pre-commit hooks on every file |
-
-### API docs
-
-| Command | Description |
-|---|---|
-| `make docs` | Generate HTML docs into `docs/build/` using pdoc |
-| `make docs-serve` | Serve docs locally with live reload |
-
-{% if use_ml -%}
+The complete list, with the fast and per-part variants, is in [AGENTS.md](AGENTS.md).
+{% if use_ml %}
 ### DVC
 
-| Command | Description |
-|---|---|
-| `make dvc-pull` | Pull data and artifacts from the DVC remote |
-| `make dvc-push` | Push data and artifacts to the DVC remote |
-| `make dvc-repro` | Reproduce the full DVC pipeline |
-
-Run a single stage or check status directly:
-
 ```bash
-uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc repro <stage_name>
-uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc status
+make dvc-pull    # pull data and artifacts from the DVC remote
+make dvc-repro   # reproduce the full pipeline
+uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc repro <stage_name>   # one stage
 ```
-
-{% endif %}### Cleanup
-
-| Command | Description |
-|---|---|
-| `make clean` | Remove build artifacts, caches, and compiled files |
-
+{% endif %}
 ---
 
 ## Configuration
