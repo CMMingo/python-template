@@ -2,7 +2,7 @@
 name: changelog-writer
 description: Update CHANGELOG.md's [Unreleased] section from the commits since the last recorded change, and cut a release section when asked. Technical record for developers: states clearly what changed and why. Keep a Changelog format and the file's own template, Semantic Versioning. Use only when asked to update the changelog (the /update-docs skill) or to prepare a release. Never touches any other file.
 tools: Read, Grep, Bash, Edit, Write
-model: sonnet
+model: haiku
 effort: medium
 color: yellow
 ---

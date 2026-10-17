@@ -2,7 +2,7 @@
 name: docs-updater
 description: Update one documentation file (given its path) so it describes what the project is and does now. Describes the current state functionally -- it is not a changelog, so it never records how the code got here. For the root README it keeps a simple, organized, jargon-light structure that works as the repository's starting point. Use only when asked to update a doc (the /update-docs skill); never touches CHANGELOG.md.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: sonnet
+model: haiku
 effort: medium
 color: yellow
 ---
