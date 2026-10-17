@@ -1,6 +1,7 @@
 ---
 name: diagnosing-bugs
 description: Diagnosis loop for hard bugs, performance regressions, and half-implemented or misbehaving features. Use when the user says "diagnose"/"debug this", reports something broken/throwing/failing/slow, or asks to get a half-built or flaky feature working. Also called by `implement` when a test failure during feature work isn't obviously explained.
+disable-model-invocation: true
 ---
 
 For one crisp symptom (an error, a stack trace, "X throws when Y") skip straight to **Dispatch**. For a broader ask -- "debug and get the collaborative editing feature working," "figure out why the export pipeline is flaky," anything naming a feature or area rather than one reproducible failure -- start with **Triage**: `debugger`'s discipline (`.claude/agents/debugger.md`) is built around one tight feedback loop for one bug, and pointing it at an undefined target just stalls it at Phase 1.

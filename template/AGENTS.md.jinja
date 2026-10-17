@@ -39,7 +39,7 @@ The skills carry the details; this is only the shape. Start from the right skill
 1. A loose idea goes to `/grill-with-docs`; a concrete request to `/spec`, which writes `docs/specs/<type>_<name>/` and creates the branch.
 2. `implement` follows `/spec` in the same conversation: `tdd` at each seam, then a `code-reviewer` pass against the spec. It never commits.
 3. `/update-docs <file>` brings one doc up to date (a README describes the project as it is now; `CHANGELOG.md` records the technical changes and why). `/commit` is the only way commits happen: atomic commits, never a push. A hook blocks any commit until `just test` passes, and another blocks destructive commands.
-4. Something broken or slow goes to `diagnosing-bugs`, not `/spec`.
+4. Something broken or slow goes to `/diagnosing-bugs`, not `/spec`. It is manual only: you start it when you want it. The one exception is `implement`, which can send a failure inside its own spec's code to the `debugger` agent.
 5. Push and open the PR yourself. Before a release, or after adding an endpoint, authentication, file handling or infrastructure, run `/security-audit`.
 
 Full rosters: [.claude/skills/README.md](.claude/skills/README.md), [.claude/agents/README.md](.claude/agents/README.md).
