@@ -10,7 +10,7 @@ The short version: the system removes typing as your bottleneck. It does not rem
 
 Before: you think, then you type, then you test, then you fix, then you commit. One person doing four jobs serially.
 
-Now: you think and decide (spec, seams, scope). An agent types, tests, and self-corrects across three separate checks (`logic-checker`, `tdd`'s own loop, `code-reviewer`) before you look at anything. You review a *report*, not a typing process. You commit deliberately, once, when you mean to.
+Now: you think and decide (spec, seams, scope). An agent types, tests, and self-corrects across two separate checks (`tdd`'s own loop and a spec-aware `code-reviewer`) before you look at anything. You review a *report*, not a typing process. You commit deliberately, once, when you mean to.
 
 The failure mode to watch for in yourself: hovering. Watching `implement` seam-by-seam like you're pair programming defeats the point — if you're going to supervise every step at that resolution, you haven't actually delegated anything, you've just added narration. The system is built with three independent checks specifically so you don't have to be the fourth. Read the final report. Spot-check if something feels off. Don't re-derive the whole diff yourself line by line — that's what `code-reviewer` is for, and it doesn't get tired or skim.
 
@@ -24,12 +24,12 @@ For anything beyond a one-line fix:
 
 1. **`/grill-with-docs`** if the idea isn't already concrete — this is your default now, not `/grill-me` (you already made that call: `grill-me` doesn't ground itself in the repo or leave anything behind for the next step, so unless you're exploring something genuinely repo-agnostic, use the one that does).
 2. **`/spec`** — writes `docs/specs/<type>_<name>/SPEC.md` and `PLAN.md`, agrees the seam(s), creates the branch. Push back if it's inventing scope you didn't ask for; that's exactly the failure mode it's built to avoid, but it's not infallible.
-3. **`implement`** (or `claude-handoff` — see §3) — builds it, seam by seam, looping on its own until the whole spec is done, with `logic-checker` catching "passes the test but isn't what you asked for" and `code-reviewer` catching "works but has a real problem" at the end.
-4. **`/commit-push`** — deliberately, when you decide the work's done. Never automatic.
-5. **`changelog-writer` / `docs-updater`** — keep docs honest, low-stakes, cheap to run often.
+3. **`implement`** (or `claude-handoff` — see §3) — builds it, seam by seam, looping on its own until the whole spec is done, with `code-reviewer` catching both "passes the test but isn't what you asked for" (checked against the spec) and "works but has a real problem" at the end.
+4. **`/update-docs <file>`** — keep the README (what exists now) and the CHANGELOG (what changed and why) honest, low-stakes, cheap to run often.
+5. **`/commit`** — deliberately, when you decide the work's done. Atomic commits, never automatic, never a push: pushing and the PR stay yours.
 6. **PR** — still yours, by design.
 
-Something's actually broken instead of not-yet-built: that's `diagnosing-bugs` → `debugger`, a different track entirely, not a variant of the above. Don't debug ad hoc inside an `implement` run — if a failure isn't obviously explained, let it hand off.
+Something's actually broken instead of not-yet-built: that's `diagnosing-bugs` → `debugger`, a different track entirely, not a variant of the above. Don't debug ad hoc inside an `implement` run — when a failure inside the spec's own code isn't obviously explained, `implement` hands it to the `debugger` subagent; a failure outside the spec's scope stops the run, and you decide whether to run `/diagnosing-bugs`.
 
 ---
 
@@ -63,7 +63,7 @@ The precondition for this working is §1's second failure mode: specs good enoug
 
 **Let `debugger` be genuinely different from you fixing it yourself.** Its whole value is the skepticism discipline (rank hypotheses, don't anchor on the first plausible story, look outside the obvious code path). If you jump in and patch the symptom yourself the moment something breaks, you've spent the effort of building this track for nothing. Hand it off, actually wait for the ranked hypotheses, and use your own judgment on *those* — not on the raw stack trace.
 
-**Treat `/commit-push` as your checkpoint, not a formality.** It's the one step in the whole pipeline that only fires when you say so. That's deliberate — use the moment before you run it to actually ask "am I ready to have this be true," not just run it because the report said "ready."
+**Treat `/commit` as your checkpoint, not a formality.** It's the one step in the whole pipeline that only fires when you say so. That's deliberate — use the moment before you run it to actually ask "am I ready to have this be true," not just run it because the report said "ready."
 
 **Invest in `CONTEXT.md` and ADRs like they're compounding interest.** Every `grill-with-docs` session that resolves a term or records a decision makes every *future* `/spec`, `implement`, and `debugger` run faster and less likely to guess wrong — including ones in a `claude-handoff` session with zero shared history with you. This is the actual mechanism behind "an agent that doesn't need everything re-explained": it's not memory, it's that the domain model is written down somewhere every fresh context reads first.
 

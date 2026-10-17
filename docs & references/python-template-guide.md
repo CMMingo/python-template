@@ -573,7 +573,7 @@ Everything under `.claude/` is what makes a generated project *AI-native* rather
 └── skills/              ← 15 workflow skills (+ README roster); general-purpose skills come from the marketplace
 ```
 
-The pieces compose as described in `AGENTS.md`'s **Development workflow** section. In one line: `/grill-with-docs` → `/spec` → `implement` (`tdd` + `logic-checker` + `code-reviewer`) → `/commit-push` (`changelog-writer` + `docs-updater` + `commit-push`) → PR by hand, with `diagnosing-bugs` → `debugger` as the separate track for things that are already broken, and the two hooks underneath all of it.
+The pieces compose as described in `AGENTS.md`'s **Development workflow** section. In one line: `/grill-with-docs` → `/spec` → `implement` (`tdd` + `code-reviewer`) → `/update-docs` (`docs-updater` or `changelog-writer`) → `/commit` → push and PR by hand, with `/security-audit` (`security-auditor`) as an extra pass before a release, with `diagnosing-bugs` → `debugger` as the separate track for things that are already broken, and the two hooks underneath all of it.
 
 ### `.claude/settings.json`
 
@@ -649,17 +649,17 @@ Subagents are independent Claude contexts the main agent dispatches for a specif
 
 | Agent | Model / effort | Tools | Job |
 |---|---|---|---|
-| `context-scout` | haiku / medium | read-only | Fact-finding in the repo (code, docs, ADRs, git history). Dispatched by `grilling` and anything that delegates to it whenever a question needs a fact instead of a decision. |
-| `code-reviewer` | sonnet / high | read-only | Fresh-eyes review of a diff for correctness, security, seam discipline, and fit with `AGENTS.md`/`CONTEXT.md`/ADRs. Reports, doesn't fix. Runs at the end of `implement` and `debugger`. |
-| `logic-checker` | sonnet / high | read-only | Per-seam check that the implementation matches the spec's *Implementation Decisions* and nothing is missing that the seam's own test wouldn't catch. Runs before that seam's test confirms green. Narrower and earlier than `code-reviewer`. |
-| `changelog-writer` | sonnet / low | edit | Updates `CHANGELOG.md`'s `[Unreleased]` from recent commits; cuts a release section when asked. History only. |
-| `docs-updater` | sonnet / low | edit | Keeps `README.md` and other top-level docs (skills READMEs, etc.) accurate and lean — deletes stale content as readily as it adds. Current-state only. |
-| `commit-push` | haiku / low | Bash | Stages, drafts commit message(s) from the diff, commits (split into logical commits when large), pushes once. Only ever triggered by the `/commit-push` skill. Never opens a PR. |
-| `debugger` | opus / high | edit + run | Structured diagnosis loop — repro, minimise, rank hypotheses, instrument, fix with a regression test — up to two rounds before writing up what was tried. Dispatched by `diagnosing-bugs`, one confirmed symptom at a time. Stops short of committing. |
+| `code-reviewer` | sonnet / high | read-only | Fresh-eyes review of a diff for correctness, security, seam discipline, and fit with `AGENTS.md`/`CONTEXT.md`/ADRs. Handed a spec path it also checks intent and completeness against the spec's *Implementation Decisions*. Reports findings, doesn't fix them. |
+| `changelog-writer` | haiku / medium | edit | Keeps `CHANGELOG.md` as the technical history: what changed and why, in the file's template. Cuts a release section when asked. Only via `/update-docs CHANGELOG.md`. |
+| `docs-updater` | haiku / medium | edit + read-only shell | Updates one doc, given its path, so it describes what the project is and does now (never history). For the root README, a simple, organized, jargon-light structure. Only via `/update-docs`. |
+| `debugger` | opus / high | edit + run | Structured diagnosis loop — repro, minimise, rank hypotheses, instrument, fix with a regression test — up to two rounds before writing up what was tried. Dispatched by `diagnosing-bugs` (one confirmed symptom at a time) or by `implement` for a failure inside the spec it is building. Stops short of committing. |
+| `security-auditor` | opus / high | read-only | Attacker-minded analysis of the code, dependencies, CI and infrastructure: maps entry points and trust boundaries, then reports ranked findings, each with an exploit path and a fix. Dispatched by `/security-audit`. |
 
-The model-tier choices are deliberate: cheap models for mechanical work (`context-scout`, `commit-push`), stronger ones with high effort for judgement (`code-reviewer`, `logic-checker`), and the strongest with a skeptical brief for debugging, where anchoring on the first plausible cause is the failure mode.
+Every subagent ends with the same brief report back — what it did, the result, what it did not do or could not verify, and what the caller should do next — because the calling agent sees only that final message, never the subagent's work.
 
-The hooks apply to subagents exactly as they apply to the main agent — `commit-push` can't commit past a red test suite either.
+A subagent is used only where it earns its keep: a fresh perspective (`code-reviewer`, `docs-updater`, `security-auditor`), a lot of noise that should stay out of the main context (`debugger`, `security-auditor`, and the reading `docs-updater` and `changelog-writer` do), or a different model tier. Small jobs where the main agent already has the context, like committing or looking something up, stay with the main agent. The model tiers are deliberate: a cheap model for the doc writing (`docs-updater`, `changelog-writer`: they read the code and the history, and a small model does this well), stronger ones with high effort for judgement (`code-reviewer`), and the strongest with a skeptical brief for debugging, where anchoring on the first plausible cause is the failure mode.
+
+The hooks apply to subagents exactly as they apply to the main agent, and `/commit` can't commit past a red test suite either.
 
 ### `.claude/skills/`
 
@@ -672,21 +672,23 @@ A skill is a folder with a `SKILL.md` (frontmatter + instructions) and optional 
 
 | Skill | Invoked by | What it does |
 |---|---|---|
-| `spec` | you (`/spec`) | Turns a feature request into `docs/specs/<type>_<name>/SPEC.md` plus a seam-organized `PLAN.md`, after a bounded round of clarifying questions and a seam check. Creates the matching `feat/`, `fix/`, or `refactor/` branch. Continues straight into `implement` by default. |
-| `implement` | you (`/implement`, or via `/spec`) | Works through the plan seam by seam: `tdd` at each seam, `logic-checker` before each seam's test confirms green, `just test`/`lint`/`typecheck` throughout, `PLAN.md` checked off, a short report per seam in the conversation and a final `REPORT.md` in the spec folder. Ends with an optional refactor pass and an independent `code-reviewer` pass. Never pauses for confirmation; never commits. |
-| `tdd` | model | Red-green test-driven development, one seam at a time — what a good test looks like, mocking at boundaries only, plus ML-specific rules (tolerance-based float assertions, checked-in fixtures, seeding, flaky-test handling). |
-| `diagnosing-bugs` | model | Triages a bug report or a half-built feature into confirmed bugs (→ `debugger`, one at a time) vs. pieces that were never built (→ `/spec` + `implement`), then dispatches. Includes a `scripts/hitl-loop.template.sh` for human-in-the-loop repro loops. |
-| `grilling` | model | The interview engine: questions the user relentlessly about a plan until nothing is silently assumed. Backs `grill-me` and `grill-with-docs`; dispatches `context-scout` when a question needs a fact. |
-| `grill-with-docs` | you (`/grill-with-docs`) | `grilling`, grounded in this repo — writes resolved vocabulary to `CONTEXT.md` and hard decisions to `docs/ADRs/` as it goes (via `domain-modeling`). |
-| `domain-modeling` | model | Builds and sharpens the project glossary (`CONTEXT.md`, or one per bounded context with a `CONTEXT-MAP.md`) and records ADRs. Ships `references/CONTEXT-FORMAT.md` and `references/ADR-FORMAT.md` as the canonical formats. Also fires on its own when terminology gets sloppy. |
-| `commit-push` | you (`/commit-push`) | Dispatches `changelog-writer` and `docs-updater`, then the `commit-push` subagent. The only way a commit happens in the workflow. |
 | `claude-handoff` | you (`/claude-handoff`) | Hands the conversation to a detached background Claude Code agent that keeps working unattended — use instead of same-session `implement` when you want to walk away. Hooks still apply. |
-| `handoff` | you (`/handoff`) | Compacts the current conversation into a handoff *document* another agent can pick up (unlike `claude-handoff`, which spawns a process). |
+| `commit` | you (`/commit`) | The main agent makes atomic commits with brief messages that say why, rebuilding each commit's intermediate state when the changes mix themes. Never a push. The only way a commit happens in the workflow. |
+| `diagnosing-bugs` | you (`/diagnosing-bugs`) | Triages a bug report or a half-built feature into confirmed bugs (→ `debugger`, one at a time) vs. pieces that were never built (→ `/spec` + `implement`), then dispatches. Includes a `scripts/hitl-loop.template.sh` for human-in-the-loop repro loops. |
+| `domain-modeling` | model | Builds and sharpens the project glossary (`CONTEXT.md`, or one per bounded context with a `CONTEXT-MAP.md`) and records ADRs. Ships `references/CONTEXT-FORMAT.md` and `references/ADR-FORMAT.md` as the canonical formats. Also fires on its own when terminology gets sloppy. |
 | `doubt` | you (`/doubt`, `/x`) | Re-examines something the agent just did or claimed with structured skepticism. Ends in one of three verdicts — wrong, right, or genuine tradeoffs — never "it depends". |
+| `frontend-design` | model | Aesthetic and UX guidance for the occasional UI work in `frontend/` — deliberate choices on palette, typography, layout. Asks clarifying questions to pick the simplest suitable stack first. Self-contained: dispatches its own `code-reviewer`. |
+| `grill-with-docs` | you (`/grill-with-docs`) | `grilling`, grounded in this repo — writes resolved vocabulary to `CONTEXT.md` and hard decisions to `docs/ADRs/` as it goes (via `domain-modeling`). |
+| `grilling` | model | The interview engine: questions the user relentlessly about a plan until nothing is silently assumed. Backs `grill-me` and `grill-with-docs`; looks facts up itself rather than asking you. |
 | `handcraft` | you (`/handcraft`) | Builds a feature one function at a time with you approving each step — the opposite end of the spectrum from `implement`. `scripts/executable_preflight.py` checks a target is runnable before starting. |
-| `frontend-design` | model | Aesthetic and UX guidance for the occasional UI work in `frontend/` — deliberate choices on palette, typography, layout. Self-contained: dispatches its own `code-reviewer` (and `logic-checker` if implementing a spec'd seam). |
-| `walkthrough` | you (`/walkthrough`) | Debugger-style tour of one concrete code path — a screen per step, one real value carried forward as it transforms. For understanding existing code. `references/example.md` shows the format. |
+| `handoff` | you (`/handoff`) | Compacts the current conversation into a handoff *document* another agent can pick up (unlike `claude-handoff`, which spawns a process). |
+| `implement` | you (`/implement`, or via `/spec`) | Works through the plan seam by seam: `tdd` at each seam, a spec-mode `code-reviewer` check before a seam's test confirms green when the spec has three or more seams, `just test`/`lint`/`typecheck` throughout, `PLAN.md` checked off, a short report per seam in the conversation and a final `REPORT.md` in the spec folder. Can dispatch `debugger` itself for a failure inside the spec's own code; stops for you on anything outside it. Ends with an optional refactor pass and an independent `code-reviewer` pass against the spec. Asks for a dedicated branch if it starts on `main` or `dev`. Never pauses for confirmation; never commits. |
+| `security-audit` | you (`/security-audit [area]`) | Dispatches `security-auditor` for an attacker-minded pass over the project or a named area, returning ranked findings with fixes. |
+| `spec` | you (`/spec`) | Turns a feature request into `docs/specs/<type>_<name>/SPEC.md` plus a seam-organized `PLAN.md`, after a bounded round of clarifying questions and a seam check. Creates the matching `feat/`, `fix/`, or `refactor/` branch. Continues straight into `implement` by default. |
+| `tdd` | model | Red-green test-driven development, one seam at a time — what a good test looks like, mocking at boundaries only, plus ML-specific rules (tolerance-based float assertions, checked-in fixtures, seeding, flaky-test handling). |
+| `update-docs` | you (`/update-docs <file>`) | Updates one doc: a README through `docs-updater` (what the project is and does now), `CHANGELOG.md` through `changelog-writer` (the technical changes and why). |
 | `wait-what` | you (`/wait-what`) | Fire when a message doesn't land — the agent re-pitches it in plain English using your `CONTEXT.md` vocabulary. |
+| `walkthrough` | you (`/walkthrough`) | Debugger-style tour of one concrete code path — a screen per step, one real value carried forward as it transforms. For understanding existing code. `references/example.md` shows the format. |
 
 ### Skills from the marketplace
 
@@ -714,7 +716,8 @@ The skills produce durable artefacts outside `.claude/`, all committed:
 - `docs/specs/<type>_<name>/` — `SPEC.md`, `PLAN.md` and `REPORT.md`, all directly in the folder, one folder per piece of work.
 - `docs/debug/<slug>.md` — one report per bug investigation, written by `debugger`.
 - `docs/clarifications/` — your own scratch notes; gitignored, so never committed.
-- `CHANGELOG.md` and `README.md` — kept current by `changelog-writer` and `docs-updater` on every `/commit-push`.
+- `CHANGELOG.md` and `README.md` — kept current on demand with `/update-docs <file>`: `changelog-writer` for the changelog, `docs-updater` for the README.
+- `docs/handoffs/<yyyy-mm>_<slug>.md` — written by `/handoff`, so a fresh session can pick the work up.
 
 Except for the `CONTEXT.md` skeleton, none of these exist in a fresh project; `docs/` ships as an empty `.gitkeep` folder and the skills create the subfolders on first use.
 
@@ -754,8 +757,8 @@ These folders contain only a `.gitkeep` file — an empty placeholder that allow
 | `docs/debug/` | Per bug | Written by `debugger` |
 | `docs/clarifications/` | Whenever you want | Yours; gitignored |
 | `docs/ADRs/` | Per hard decision | Written by `domain-modeling` when a non-obvious, hard-to-reverse choice is made |
-| `CHANGELOG.md` | Per commit, via `changelog-writer` | Whenever something user-facing changes — automated through `/commit-push` |
-| `README.md` | Per commit, via `docs-updater` | Whenever the change makes something in it stale — automated through `/commit-push` |
+| `CHANGELOG.md` | Per batch of changes, via `changelog-writer` | When you run `/update-docs CHANGELOG.md`: the technical changes and why |
+| `README.md` | On demand, via `docs-updater` | When you run `/update-docs README.md`: what the project is and does now, never history |
 | `config/config.yaml` | Per project | When adding new configuration |
 | `pipeline/*.py`, `dvc.yaml` | Per pipeline change | Replace the placeholder stage bodies first; edit `dvc.yaml` when adding or renaming stages (`use_ml`) |
 | `pyproject.toml` | Occasionally | When adding dependencies (through `uv add`, which pins exactly; never by hand) |
