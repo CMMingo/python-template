@@ -10,7 +10,7 @@
 - Flat over nested — early returns, guard clauses, max 3 indentation levels.
 - Explicit over implicit. No hidden side effects. Dependencies flow inward.
 - Types as documentation. Prefer failing on uncertain cases over handling everything.
-- Tests mock collaborators; production never bends to make tests possible.
+- Tests mock only system boundaries (network, time, randomness, heavy models), never your own modules. Production code carries no test-only code (no flags, hooks or exposed internals); passing a dependency in as an argument is ordinary design, not that.
 - Three similar lines is better than a premature abstraction. Don't design for hypothetical future requirements.
 - Default to no comments. Only add one when the WHY is non-obvious (hidden constraint, subtle invariant, workaround). Never explain WHAT — names do that.
 - No belt and suspenders pattern. Fail fast and surface errors.
@@ -46,7 +46,8 @@ Before implementing:
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
-- No half-finished implementations. If you can't complete it, say so explicitly rather than leaving stubs.
+- The exception is an `implement` run, where nobody may be there to answer: make the best-supported call, flag it as an assumption in the report, and stop only if the guess would be hard to undo.
+- No half-finished implementations. If you can't complete it, say so explicitly rather than leaving stubs. The exception is a step-by-step mode such as `handcraft`, where labelled stubs are part of the method; resolve every one before any commit.
 
 ### 2. Simplicity First
 
@@ -66,7 +67,7 @@ Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, sim
 
 When editing existing code:
 - Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
+- Don't refactor things that aren't broken. The cleanup `tdd` and `implement` do applies only to code this change added or modified; mention anything you notice in older code instead of touching it.
 - Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it - don't delete it.
 
