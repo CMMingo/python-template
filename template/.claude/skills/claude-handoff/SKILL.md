@@ -11,7 +11,7 @@ Write a handoff summary of the current conversation -- enough for a fresh agent 
 
 - The spec being implemented (path, not a copy of its content) and the branch already checked out for it.
 - What's already done vs. what's left (e.g. "spec written and branch created, implementation not started" or "implementation done through seam 2 of 3").
-- Which skills the next agent should reach for -- name `implement` explicitly; it loops through `tdd`, `logic-checker`, and `code-reviewer` on its own, seam by seam, until the spec is done, then stops and reports ready for `/commit-push` -- a separate, explicit step the next agent still has to trigger.
+- Which skills the next agent should reach for -- name `implement` explicitly; it loops through `tdd`, `logic-checker`, and `code-reviewer` on its own, seam by seam, until the spec is done, then stops and reports ready for `/commit` -- a separate, explicit step the next agent still has to trigger.
 - Any decision made in this conversation that isn't already captured in the spec, `CONTEXT.md`, or an ADR -- reference those files by path rather than repeating their content.
 - Redact anything sensitive (API keys, credentials, PII) before it goes in -- this summary becomes the next session's prompt verbatim.
 

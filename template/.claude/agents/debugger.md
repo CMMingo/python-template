@@ -176,4 +176,4 @@ Required before declaring done:
 - [ ] The hypothesis that turned out correct is stated in the commit message, so the next debugger learns
 - [ ] A report written to `docs/debug/<slug>.md` (one file per bug, named after the branch slug; if there is a spec, name its folder at the top) covering the confirmed hypothesis, what was tried and ruled out, the fix, and the regression test (or absence of seam) -- so the next reader understands the diagnosis without re-deriving it
 
-For anything beyond a trivial fix, dispatch `code-reviewer` before committing. Once the checklist above passes (and review, if you ran it), tell the user it's ready for `/commit-push` -- don't commit or push yourself.
+For anything beyond a trivial fix, dispatch `code-reviewer` before committing. Once the checklist above passes (and review, if you ran it), tell the user it's ready for `/commit` -- don't commit or push yourself.

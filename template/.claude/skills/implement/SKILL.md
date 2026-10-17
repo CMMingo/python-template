@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Implement the work described in a spec end to end -- loops through the plan's tasks, seam by seam, via `tdd`, with `logic-checker` and `code-reviewer` checks throughout, updating `PLAN.md` and writing `REPORT.md` as it goes, continuing on its own until every seam is covered and reviewed rather than stopping after one step. Continues automatically right after /spec finishes, in the same conversation, unless the user asked for a background handoff instead (`claude-handoff`). Reports progress after each seam so you can follow along, but never pauses to ask permission to continue -- only a genuine blocking ambiguity stops it early. Does not commit or push -- use /commit-push for that.
+description: Implement the work described in a spec end to end -- loops through the plan's tasks, seam by seam, via `tdd`, with `logic-checker` and `code-reviewer` checks throughout, updating `PLAN.md` and writing `REPORT.md` as it goes, continuing on its own until every seam is covered and reviewed rather than stopping after one step. Continues automatically right after /spec finishes, in the same conversation, unless the user asked for a background handoff instead (`claude-handoff`). Reports progress after each seam so you can follow along, but never pauses to ask permission to continue -- only a genuine blocking ambiguity stops it early. Does not commit -- use /commit for that.
 disable-model-invocation: true
 ---
 
@@ -18,7 +18,7 @@ You've been handed a spec (usually just-written, `docs/specs/<type>_<name>/SPEC.
 5. Dispatch the `code-reviewer` subagent for an independent pass over the resulting diff.
 6. If `code-reviewer` finds something real, fix it and re-run the full suite before considering the work done.
 7. Write the report to `docs/specs/<type>_<name>/REPORT.md` (create it on the first run against this spec; on a later run, update it in place and add a dated section rather than creating another file -- see the `spec` skill's "Where things live" section). Cover: what was implemented per seam, anything `logic-checker`/`code-reviewer` flagged and how it was resolved, any assumptions made and why, final test/lint/typecheck status, and anything left for later. Write it for someone with zero context on this conversation.
-8. Stop there. Report in the conversation what was implemented, that tests pass, and that it's been reviewed -- then say it's ready for `/commit-push`. Don't commit or push yourself; that's a deliberate, separately-triggered step.
+8. Stop there. Report in the conversation what was implemented, that tests pass, and that it's been reviewed -- then say it's ready for `/commit`. Don't commit or push yourself; committing is a deliberate, separately-triggered step and pushing is the user's.
 
 ## Rules
 
