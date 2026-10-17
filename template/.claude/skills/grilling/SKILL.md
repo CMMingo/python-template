@@ -23,7 +23,7 @@ Format a round like so:
 
 Each round the user answers reshapes the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a _later_ round, not this one.
 
-Finding _facts_ is your job, never the user's. When a frontier question needs a fact from the environment (filesystem, tools, etc.), dispatch the `context-scout` subagent to find it; don't ask the user for anything you could look up yourself. Don't block on it: a running exploration is an unsettled prerequisite, so only the questions downstream of it wait for the sub-agent to report; ask the rest of the frontier now. The _decisions_ are the user's: put each to them and wait.
+Finding _facts_ is your job, never the user's. When a frontier question needs a fact from the environment (filesystem, tools, etc.), find it yourself (for a broad search across many files, use the built-in `Explore` agent and ask it to cite file and line); don't ask the user for anything you could look up. Don't block on a running exploration: it is an unsettled prerequisite, so only the questions downstream of it wait for the result; ask the rest of the frontier now. The _decisions_ are the user's: put each to them and wait.
 
 There is deliberately no cap on the number of questions here — some plans need three, some need fifty, and a fixed ceiling either truncates the hard case or feels arbitrary on the easy one. If a session runs long, that's usually a sign the scope is too big for one sitting, not a reason to force it to a close; say so and suggest breaking the work up instead.
 

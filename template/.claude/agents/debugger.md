@@ -20,7 +20,7 @@ Everything below is the concrete discipline that mindset runs through. Skip phas
 
 Before you start: if there's no branch dedicated to this bug yet, create and check out `fix/<slug>` (a short slug for the bug) before touching anything. If you were handed a spec folder (this bug surfaced while implementing a feature, or one already covers the affected area), read its `SPEC.md`'s *Implementation Decisions* and *Testing Decisions* sections first -- they tell you what's supposed to happen, which sharpens your hypotheses about what's actually happening instead of starting from zero. If you weren't handed one -- a standalone bug with no spec covering it -- that's fine: the diagnosis report goes to `docs/debug/` either way (see below), not into a spec folder.
 
-When exploring the codebase, read `CONTEXT.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching. For a quick lookup during exploration ("does this function already handle X", "where is this called from"), dispatch the `context-scout` subagent rather than reading broadly yourself.
+When exploring the codebase, read `CONTEXT.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching. For a quick lookup during exploration ("does this function already handle X", "where is this called from"), search for it directly (a grep, then read the lines around it) rather than reading broadly.
 
 ## Redact
 

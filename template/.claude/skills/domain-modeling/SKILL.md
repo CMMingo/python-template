@@ -45,7 +45,7 @@ When domain relationships are being discussed, stress-test them with specific sc
 
 When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible. Which is right?"
 
-For a quick check like this, dispatch the `context-scout` subagent rather than reading the whole file yourself -- it's a fact-finding lookup, not a modeling decision.
+For a quick check like this, search for the term yourself (a grep and a look at the lines around it) rather than reading the whole file -- it's a fact-finding lookup, not a modeling decision.
 
 ### Update CONTEXT.md inline
 
