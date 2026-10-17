@@ -107,7 +107,7 @@ When generation finishes, Copier prints the next steps for the layout you chose 
 - No Docker files: images are specific to each project, so they aren't templated
 
 **AI-native development (Claude Code)**
-- `AGENTS.md` — how to work in the project (stack, layout, commands, guidelines), points to `CONTEXT.md`, `docs/ADRs/` and the architecture section of the README, plus a *Development workflow* section mapping how the skills, subagents, and hooks compose end to end. Any agent tool can read it
+- `AGENTS.md` — how to work in the project: a short *Where to look* section (`CONTEXT.md`, `docs/ADRs/`, the README, `pyproject.toml`), the few commands that matter (`just --list` has the rest), the guidelines, and a short *Development workflow* section mapping how the skills, subagents, and hooks compose end to end. Any agent tool can read it
 - `CLAUDE.md` — imports `AGENTS.md` (`@AGENTS.md`) so Claude Code loads the same brief, since it reads `CLAUDE.md` and not `AGENTS.md`, plus an empty *Claude Code specifics* section for instructions that only apply to Claude Code
 - `.claude/settings.json` — registers the two `PreToolUse` guard hooks and the `PostToolUse` formatter, plus the marketplace and a per-project on/off list (`enabledPlugins`: the `dev`, `learning` and `presenting` groups on, the rest off) for the general-purpose skills
 - `.claude/hooks/` — `test_gate.py` (no `git commit` until `just test` passes, no override), `destructive_guard.py` (blocks `rm -rf` on dangerous paths, `git reset --hard`, force-pushes to `main`, etc.) and `format_python.py` (runs the project's own `ruff format` on every Python file the agent writes; plain Python, no `jq` needed)

@@ -89,13 +89,13 @@ Dependencies are not written by hand: they were resolved to their latest version
 ├── .github/                    # CI workflows, issue and PR templates
 ├── .vscode/                    # shared VS Code settings, extensions and tasks
 ├── justfile
-├── AGENTS.md                   # project context for AI assistants
+├── AGENTS.md                   # how AI assistants work in the project
 ├── CLAUDE.md                   # Claude Code entry point: imports AGENTS.md
 ├── CONTEXT.md                  # domain glossary, filled in by the skills
 └── CHANGELOG.md
 ```
 {% if project_layout == 'product' %}
-`config/`, `logs/`{{ ", `data/`, `runs/` and `notebooks/`" if use_ml }} stay at the repo root and are shared by every part of the product; the code in `backend/` finds them by anchoring to the repo root, not to the working directory.
+`config/`, `logs/`{{ ", `data/`, `runs/` and `notebooks/`" if use_ml }} stay at the repo root and are shared by every part of the product; the code in `backend/` finds them by anchoring to the repo root, not to the working directory. Python tooling runs from `backend/`; `just` does that for you, so recipes work from anywhere in the repo. The frontend is not chosen yet: read `frontend/decide-frontend-style.md` before picking a stack.
 {% endif %}
 ---
 
@@ -138,7 +138,7 @@ See [.claude/skills/spec/SKILL.md](.claude/skills/spec/SKILL.md) for the full sp
 | `just format` | Format the code |
 | `just docs` | Generate HTML docs into `docs/build/` |
 
-The complete list, with the fast and per-part variants, is in [AGENTS.md](AGENTS.md).
+`just --list` shows every recipe, including the fast and per-part variants.
 {% if use_ml %}
 ### DVC
 

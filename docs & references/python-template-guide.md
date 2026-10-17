@@ -97,7 +97,7 @@ Each top-level key becomes a variable available as `{{ variable_name }}` in ever
 
 **The task.** After copying, Copier runs `scripts/resolve-latest.sh` (see [`scripts/`](#scripts)). That is why generation needs network access and `copier copy --trust`. The script skips itself once `uv.lock` exists, so `copier update` doesn't redo it, and with a warning if `uv` is missing.
 
-**The message.** `_message_after_copy` is printed when generation finishes: where the project is, the next steps for the layout chosen (`bash scripts/setup.sh`, filling in `AGENTS.md`, and for `product` deciding the frontend and filling in `scripts/dev.sh`), how to turn Dependabot on, and how to pull later template changes.
+**The message.** `_message_after_copy` is printed when generation finishes: where the project is, the next steps for the layout chosen (`bash scripts/setup.sh`, filling in `CONTEXT.md` and the README's Architecture section, and for `product` deciding the frontend and filling in `scripts/dev.sh`), how to turn Dependabot on, and how to pull later template changes.
 
 **Updating.** When you improve the template and push changes, anyone who generated a project from it can run `copier update` in their project directory to pull in the changes. Copier diffs the old and new template versions and merges the changes, similar to a Git rebase. This depends on `.copier-answers.yml` (see below), which records the answers and the template version a project was generated from, and on a clean git tree. The `resolve-latest.sh` task runs only on the first `copy` (`when: "{{ _copier_operation == 'copy' }}"`): during an update Copier regenerates the project in temporary folders to compute a diff, and running the task there produced different dependency pins, which the merge then used to remove the project's own. Tag the template repo when you release a set of changes (`git tag v0.2.0`): Copier updates to the latest tag and a project can be pinned to a specific one; without tags it follows the latest commit.
 
@@ -208,29 +208,29 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 `AGENTS.md` is the project brief for AI assistants, and the file to maintain. `AGENTS.md` is the convention most agent tools read, so the brief isn't tied to one of them. It is a template with sections to fill in and sections that are pre-filled:
 
 ```text
-## Domain context            ← pre-filled: where CONTEXT.md, docs/ADRs/ and the architecture live (nothing is imported)
-## Stack & tools             ← pre-filled for the chosen layout (DVC, frontend only when present)
-## Project layout            ← pre-filled: where Python, the UI and the shared folders live
-## Common commands           ← pre-filled: every just recipe, with when to use it
-## Development workflow      ← pre-filled: how the skills, subagents and hooks compose
-## General guidelines        ← pre-filled: dev philosophy, tooling rules, constraints
-## Behavioral guidelines     ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
+## Where to look            ← pre-filled: CONTEXT.md, docs/ADRs/, the README, pyproject.toml (nothing is imported)
+## Commands                 ← pre-filled: the few that matter; `just --list` has the rest
+## Development workflow     ← pre-filled: the shape of the skills, subagents and hooks, in a few lines
+## General guidelines       ← pre-filled: dev philosophy, tooling rules, constraints
+## Behavioral guidelines    ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
 ```
 
-`AGENTS.md` says how to work in the project; it does not hold the project overview or the out-of-scope notes. Those live in `CONTEXT.md`, together with the domain glossary. The *Domain context* section only says where things are, and nothing is imported, so `CONTEXT.md` is not loaded in every session: the skills that need the domain language (`tdd`, `debugger`, `code-reviewer`, `wait-what`, the grilling pair) read it when they run, and a plain conversation reads it only if the agent follows the pointer. If you ever want it always loaded, add a line `@CONTEXT.md` to `AGENTS.md`: Claude Code expands `@path` imports at launch (tested), at the cost of the whole glossary in every session.
+`AGENTS.md` says how to work in the project; it does not hold the project overview or the out-of-scope notes. Those live in `CONTEXT.md`, together with the domain glossary. The *Where to look* section only says where things are, and nothing is imported, so `CONTEXT.md` is not loaded in every session: the skills that need the domain language (`tdd`, `debugger`, `code-reviewer`, `wait-what`, the grilling pair) read it when they run, and a plain conversation reads it only if the agent follows the pointer. If you ever want it always loaded, add a line `@CONTEXT.md` to `AGENTS.md`: Claude Code expands `@path` imports at launch (tested), at the cost of the whole glossary in every session.
 
 **Where each kind of knowledge lives:**
 
 | What | Where | Loaded |
 |---|---|---|
-| How to work here: stack, layout, commands, rules | `AGENTS.md` | Every session |
+| How to work here: the few commands that matter, the workflow, the guidelines | `AGENTS.md` | Every session |
+| Stack and dependencies, the full command list | `pyproject.toml`, `.pre-commit-config.yaml`, `just --list` | On demand |
+| Project structure and layout | `README.md`, *Project structure* | When someone reads it |
 | What the project is, what it is not, domain terms | `CONTEXT.md` | By the skills that need it |
 | High-level architecture (parts and data flow) | `README.md`, *Architecture* section (kept current by `docs-updater`) | When someone reads it |
 | Hard-to-reverse decisions and their trade-offs | `docs/ADRs/`, one file per decision | By the skills, for the area they touch |
 
 ADRs are deliberately not imported or listed anywhere: there can be dozens, and the value is reading only the ones for the area being changed. `AGENTS.md` names the folder, and `domain-modeling`, `tdd`, `debugger` and `code-reviewer` check it themselves.
 
-The *Project layout* section matters in `product` projects: it tells the agent that Python lives in `backend/` and that tooling runs from there (or through `just`, which does it for you).
+In `product` projects the README's *Project structure* section is where the layout is explained: Python lives in `backend/`, and `just` runs tooling from there for you. `AGENTS.md` only keeps the one rule an agent could not discover: ask before choosing a frontend stack.
 
 `CLAUDE.md` starts with `@AGENTS.md`, which imports the brief. Claude Code reads `CLAUDE.md` and not `AGENTS.md`, so without that line it would never see the brief. Below the import it has an empty **Claude Code specifics** section for instructions that only make sense for Claude Code (everything else belongs in `AGENTS.md`, so there is one place to keep the content). It is deliberately not a jinja template.
 

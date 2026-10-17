@@ -2,62 +2,27 @@
 
 This file tells you how to work in this project. Fill in each section as the project evolves.
 
-## Domain context
+## Where to look
 
-What the project is, what it deliberately does not do, and its domain vocabulary live in `CONTEXT.md`. Read it before work that touches domain concepts, and use its terms exactly; add new ones with `/grill-with-docs`. Hard-to-reverse decisions are recorded as ADRs in `docs/ADRs/` (it appears with the first one): read the ones for the area you are changing. The high-level architecture is in `README.md`.
-
-## Stack & tools
-
-- Python {{ python_version }}+
-- uv (dependency management)
-- Ruff (lint + format) + pre-commit
-- ty (type checking)
-- pytest (testing)
-{%- if use_ml %}
-- dvc (data and pipeline management)
-{%- endif %}
+- What the project is, what it deliberately is not, and its domain vocabulary: `CONTEXT.md`. Read it before work that touches domain concepts and use its terms exactly; new terms go in through `/grill-with-docs`.
+- Hard-to-reverse decisions: `docs/ADRs/` (it appears with the first one). Read only the ones for the area you are changing, they might be extensive.
+- Architecture and project structure: `README.md`.
+- Stack and dependencies: `{{ py_root }}pyproject.toml` and `.pre-commit-config.yaml`.
 {%- if project_layout == 'product' %}
-- Frontend: not chosen yet (see `frontend/decide-frontend-style.md`)
-{%- endif %}
-- <!-- add more: FastAPI, MLflow, etc. -->
-
-## Project layout
-
-{% if project_layout == 'product' -%}
-Product layout: Python lives in `backend/` (package `app`, tests in `backend/tests/`), the UI in `frontend/` (not chosen yet: `frontend/decide-frontend-style.md` is the guide; ask the user before picking a stack), infrastructure in `infra/` (tests in `infra/tests/`). `config/`, `logs/`{{ ", `data/`, `runs/`, `notebooks/`" if use_ml }} are at the repo root. Run Python tooling from `backend/` (or through `just`, which does it for you).
-{%- else -%}
-Simple layout: package `{{ package_name }}/` and `tests/` at the repo root, with the root `pyproject.toml`.{{ " ML folders (`data/`, `notebooks/`, `runs/`, `results/`) and `dvc.yaml` are at the root too." if use_ml }}
+- The frontend is not chosen yet: ask the user before picking a stack (`frontend/decide-frontend-style.md`).
 {%- endif %}
 
-## Common commands
+## Commands
 
-`just` lists every recipe. Run Python tooling through `just`{{ " (it handles the `backend/` folder for you)" if project_layout == 'product' }}, not by calling the tools directly.
+Run tooling through `just`, not by calling the tools directly. `just --list` shows every recipe with its description, so use it for anything not listed here.
 
 ```bash
-just setup         # fresh clone: check tools, deps, pre-commit{{ ", DVC" if use_ml }}, .env
-just install       # install dependencies and the pre-commit hook
-just sync          # install the Python dependencies from the lockfile
-
-just test          # all tests{{ " (backend + frontend; the frontend part is skipped until it exists)" if project_layout == 'product' }}
-just test-fast     # Python tests without coverage: use while iterating
-just test-py       # Python tests with coverage
-{%- if project_layout == 'product' %}
-just test-frontend # frontend tests
-{%- endif %}
-just lint          # {{ "ruff, ty and the frontend linter" if project_layout == 'product' else "ruff and ty" }}
-just typecheck     # type-check with ty
-just format        # format with ruff
-just fix           # lint with auto-fix, then format (ruff): run before committing
-just pre-commit    # run every pre-commit hook on all files
-
-just docs          # generate API docs into docs/build/
-just docs-serve    # serve them locally with live reload
-just clean         # remove caches and build artifacts
+just test-fast   # Python tests without coverage: use while iterating
+just test        # all tests
+just lint        # linters and the type check
+just fix         # lint with auto-fix, then format: run before committing
 {%- if use_ml %}
-
-just dvc-pull      # pull data and artifacts from the DVC remote
-just dvc-push      # push them
-just dvc-repro     # reproduce the whole pipeline
+just dvc-repro   # reproduce the DVC pipeline
 # Any other dvc command has no just recipe: run it directly, e.g. one stage:
 uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc repro <stage>
 {%- endif %}
@@ -69,17 +34,13 @@ uv run --project {{ 'backend' if project_layout == 'product' else '.' }} dvc rep
 
 ## Development workflow
 
-For anything bigger than a one-line fix, this is the shape the process takes end to end. Nothing here is a command you run in sequence -- each piece triggers on its own (model-invoked, user-invoked, or hook-enforced). This section is a map of how they compose, not a recipe.
+The skills carry the details; this is only the shape. Start from the right skill and let it run.
 
-1. **Clarify intent, if it isn't already clear.** Loose idea, nothing concrete yet: `/grill-with-docs` (interview, grounded in this repo, settles terms into `CONTEXT.md` and hard decisions into `docs/ADRs/` via `domain-modeling`). Skip this when the request is already concrete.
-2. **Write it down: `/spec`.** Turns the request into `docs/specs/<type>_<name>/SPEC.md` plus a seam-organized `PLAN.md` task breakdown -- problem, solution, decisions, and a *Testing Decisions* section naming the seam -- and creates the matching branch (`feat/<name>`, `fix/<name>`, or `refactor/<name>`). Skip for trivial changes.
-3. **Implement.** `/spec` continues straight into the `implement` skill, in the same conversation, by default -- `tdd` at each agreed seam, with `logic-checker` checking each seam's code against the spec's intent before that seam's test confirms green (tests only catch what they were written to catch; this catches what's missing or built against the wrong understanding), `just test`/`just lint`/`just typecheck` running throughout, `PLAN.md` checked off as it goes. Once every seam's covered, a deliberate refactor pass addresses anything `tdd` flagged as worth restructuring (only if something was flagged), then an independent `code-reviewer` pass runs over the full diff, and a report of what happened gets written to the spec folder's `REPORT.md`. Reports after each seam so you can follow along. `implement` doesn't pause between seams for confirmation either way, so stepping away doesn't change how it runs -- only who's there to read the reports as they land. Use `claude-handoff` instead when you want to close the session entirely and have it keep going unattended. Either way, it stops short of committing.
-4. **Keep the docs honest, then commit & push.** Run `/commit-push` when you're ready -- it only runs when you explicitly ask for it, never on its own. It first dispatches `changelog-writer` (records the change in `CHANGELOG.md`, history, append-only) and `docs-updater` (fixes whatever the change made stale in `README.md`, current state, pruned as it goes), so doc updates land in the same commit(s) as the code they describe -- then stages the diff, drafts a commit message, commits (splitting into several logical commits if the diff is large), and pushes once at the end. `test-gate` still hard-blocks every commit until `just test` passes (no override) and the destructive-command guardrail still applies, exactly as if you'd typed the commands yourself -- including inside a `claude-handoff` background run. Committing by hand outside Claude Code runs only the fast `.pre-commit-config.yaml` checks (formatting, large files, secrets, type check), which you can bypass with `--no-verify` if you have a real reason to; the test suite is not a hook, so run `just test` when you want it (CI runs it on every push).
-5. **Open the PR yourself.** Not automated -- `gh pr create` or the GitHub UI, once you're happy with what's pushed.
-
-**Debugging is a separate track, not a variant of steps 1-3.** Something broken, throwing, or slow goes through `diagnosing-bugs` instead of `/spec` + `implement`: it dispatches the `debugger` subagent -- Opus, higher reasoning effort, a deliberately different, more skeptical mindset (resist the first plausible cause; consider causes outside the code path; distrust your own assumptions about how things already work). For a whole half-built or flaky feature rather than one crisp symptom, `diagnosing-bugs` triages it first -- sorting confirmed bugs (`debugger`, one at a time) from pieces that were simply never built (`/spec` + `implement` instead). Feature work optimizes for the simplest correct build against a decided spec; debugging optimizes for finding what's *actually* true about something already broken -- different enough problems that they don't share a model tier or a process. `debugger` loops through ranked hypotheses for up to two rounds before stopping to write up what it tried rather than guessing indefinitely. `debugger` still ends the same way as `implement`: `code-reviewer` for anything non-trivial, then `/commit-push` -- it never commits itself.
-
-`context-scout` is the fact-finder any of the above dispatches for a repo lookup instead of guessing. The destructive-command guardrail hook runs under all of it, on every Bash call, independent of which step you're in.
+1. A loose idea goes to `/grill-with-docs`; a concrete request to `/spec`, which writes `docs/specs/<type>_<name>/` and creates the branch.
+2. `implement` follows `/spec` in the same conversation: `tdd` at each seam, with `logic-checker` and `code-reviewer` checks. It never commits.
+3. `/commit-push` is the only way commits happen: it updates the changelog and the README first. A hook blocks any commit until `just test` passes, and another blocks destructive commands.
+4. Something broken or slow goes to `diagnosing-bugs`, not `/spec`.
+5. Open the PR yourself.
 
 Full rosters: [.claude/skills/README.md](.claude/skills/README.md), [.claude/agents/README.md](.claude/agents/README.md).
 

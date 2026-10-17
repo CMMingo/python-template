@@ -56,7 +56,7 @@ _message_after_copy: |
   Next steps:
     1. cd {{ _copier_conf.dst_path }}
     2. bash scripts/setup.sh        installs the dependencies and the pre-commit hook, creates .env
-    3. Fill in "Project overview" and "Architecture" in AGENTS.md
+    3. Fill in CONTEXT.md and the Architecture section of README.md
   {%- if project_layout == 'product' %}
     4. Decide the frontend: frontend/decide-frontend-style.md
     5. Fill in the two commands in scripts/dev.sh once the stack is chosen (then `just dev`)
