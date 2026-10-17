@@ -6,6 +6,10 @@ disable-model-invocation: true
 
 You've been handed a spec (usually just-written, `docs/specs/<type>_<name>/SPEC.md`, on its own branch) and asked to actually build it: one continuous run of implementation, checks, and review that keeps going seam by seam until the whole spec is done -- not a single step that stops and waits.
 
+## Before you start
+
+Check the branch: `git branch --show-current`. If it is `main`, `master`, `dev` or `develop` (or HEAD is detached), don't start building. Ask the user to confirm creating a dedicated branch -- propose `<type>/<name>` from the spec folder name, for example `feat/multi-edit` for `docs/specs/feat_multi-edit/` -- and wait for the answer; once confirmed, create it and check it out. In an unattended `claude-handoff` run, where nobody can answer, create that branch yourself and say so in `REPORT.md`. If you are already on a dedicated branch for this work, carry on.
+
 ## Process
 
 1. Read the spec's *Implementation Decisions* and *Testing Decisions* sections, and the task breakdown in the sibling `PLAN.md`. The seam(s) and tasks are already agreed there -- don't re-derive them, and don't second-guess a decision the spec or plan already settled.
@@ -26,5 +30,4 @@ You've been handed a spec (usually just-written, `docs/specs/<type>_<name>/SPEC.
 - **Keep `PLAN.md` and `REPORT.md` current as you go**, not just at the end (steps 2 and 7). If this run gets interrupted for any reason before every seam is done -- context limit, the user stopping it, anything -- whoever resumes should be able to read `PLAN.md`'s checkboxes and `REPORT.md` and know exactly where things stand, without re-deriving it from the diff. Resuming is then just re-invoking `implement` against the same spec.
 - If you hit a genuine ambiguity the spec didn't resolve, don't guess silently, and don't stop and wait by default either: make the best-supported call, implement it, and flag it plainly in your report as an assumption -- the same convention `/spec` itself uses when a question goes unanswered after three rounds. Only stop and ask if the ambiguity is one no reasonable assumption could recover from (it changes *what's* being built, not just *how*).
 - Don't expand scope beyond what the spec's *Implementation Decisions* actually named. If you notice something the spec should have covered but didn't, flag it in the report rather than deciding it yourself.
-- This skill assumes a branch already exists for the work (created by `/spec`). If there isn't one, create it first, named consistently with the spec's slug.
 - If a test fails for a reason that isn't immediately obvious -- the cause doesn't jump out after a quick look, or your first fix attempt didn't produce the expected result -- don't keep guessing inside this loop, whether the confusing behaviour is in code you just wrote or in something pre-existing your change exposed. Call the Skill tool with `diagnosing-bugs`, passing it this spec's path and the exact failure, and wait for its report. Resume the `tdd` loop from where you left off once it hands back a diagnosis and fix. Feature work and debugging are deliberately different processes here -- don't blur them by debugging ad hoc in this loop.
