@@ -197,11 +197,11 @@ It also has a **Docs** section that spells out the three kinds of documentation 
 | `docs/clarifications/` | Your own scratch notes for understanding a topic; gitignored, not read by the skills unless you point at a file | you |
 | `docs/build/` | Generated API docs (gitignored) | `pdoc` via `just docs` |
 
-Fill in the description and update it as the project grows — or let the `docs-updater` subagent do it as part of `/commit-push` (see [`.claude/`](#claude)).
+Fill in the description and update it as the project grows — or let the `docs-updater` subagent do it through `/update-docs README.md` (see [`.claude/`](#claude)).
 
 ### `CHANGELOG.md`
 
-A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. It ships with an empty `[Unreleased]` section and the standard subsections (Added, Changed, Deprecated, Removed, Fixed, Security). The `changelog-writer` subagent appends to it on every `/commit-push`. It passes markdownlint as shipped, and the markdown workflow keeps it that way.
+A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. It ships with an empty `[Unreleased]` section and the standard subsections (Added, Changed, Deprecated, Removed, Fixed, Security). The `changelog-writer` subagent appends to it when you run `/update-docs CHANGELOG.md`: the technical changes and why. It passes markdownlint as shipped, and the markdown workflow keeps it that way.
 
 ### `AGENTS.md` and `CLAUDE.md`
 

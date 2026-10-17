@@ -38,7 +38,7 @@ The skills carry the details; this is only the shape. Start from the right skill
 
 1. A loose idea goes to `/grill-with-docs`; a concrete request to `/spec`, which writes `docs/specs/<type>_<name>/` and creates the branch.
 2. `implement` follows `/spec` in the same conversation: `tdd` at each seam, with `logic-checker` and `code-reviewer` checks. It never commits.
-3. `/commit` is the only way commits happen: atomic commits, never a push. A hook blocks any commit until `just test` passes, and another blocks destructive commands.
+3. `/update-docs <file>` brings one doc up to date (a README describes the project as it is now; `CHANGELOG.md` records the technical changes and why). `/commit` is the only way commits happen: atomic commits, never a push. A hook blocks any commit until `just test` passes, and another blocks destructive commands.
 4. Something broken or slow goes to `diagnosing-bugs`, not `/spec`.
 5. Push and open the PR yourself.
 
