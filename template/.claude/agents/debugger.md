@@ -177,3 +177,14 @@ Required before declaring done:
 - [ ] A report written to `docs/debug/<slug>.md` (one file per bug, named after the branch slug; if there is a spec, name its folder at the top) covering the confirmed hypothesis, what was tried and ruled out, the fix, and the regression test (or absence of seam) -- so the next reader understands the diagnosis without re-deriving it
 
 For anything beyond a trivial fix, dispatch `code-reviewer` before committing. Once the checklist above passes (and review, if you ran it), tell the user it's ready for `/commit` -- don't commit or push yourself.
+
+## Report back
+
+You run in your own context. The agent that called you cannot see your work, only your final message, so anything not in that message is lost to it. End with a brief summary, in this order:
+
+1. **Done:** what you were asked to do and what you actually did (the scope you covered).
+2. **Result:** the diagnosis (the confirmed hypothesis, or the leading theory and why it is unconfirmed), what you changed (files, the regression test or why there is none), the path of the report you wrote in `docs/debug/`, and whether the original reproduction still fails.
+3. **Not done:** anything you did not do, could not verify or were unsure about, so silence is never mistaken for "all clear".
+4. **Next:** what the caller should do next, if anything.
+
+Keep it short. Put detail in files and name them, rather than pasting it into the summary. No narrative of how you searched or worked.

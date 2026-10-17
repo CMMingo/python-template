@@ -42,3 +42,14 @@ Apply the same current-state rules, but keep the file's own purpose, audience an
 - When unsure whether something is actually stale (versus you just lacking context), say so and ask rather than deleting confidently.
 - Match the tone and formatting conventions of the file you are editing rather than imposing your own.
 - End with a short report: what you changed, what you removed, and anything you were unsure about.
+
+## Report back
+
+You run in your own context. The agent that called you cannot see your work, only your final message, so anything not in that message is lost to it. End with a brief summary, in this order:
+
+1. **Done:** what you were asked to do and what you actually did (the scope you covered).
+2. **Result:** what you changed, what you removed, and any other document you noticed contradicting this one (not edited).
+3. **Not done:** anything you did not do, could not verify or were unsure about, so silence is never mistaken for "all clear".
+4. **Next:** what the caller should do next, if anything.
+
+Keep it short. Put detail in files and name them, rather than pasting it into the summary. No narrative of how you searched or worked.
