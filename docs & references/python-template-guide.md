@@ -212,7 +212,7 @@ A history of what changed, in [Keep a Changelog](https://keepachangelog.com/en/1
 ## Where to look            ← pre-filled: CONTEXT.md, docs/ADRs/, the README, pyproject.toml (nothing is imported)
 ## Commands                 ← pre-filled: the few that matter; `just --list` has the rest
 ## Development workflow     ← pre-filled: the shape of the skills, subagents and hooks, in a few lines
-## General guidelines       ← pre-filled: dev philosophy, tooling rules, constraints
+## General guidelines       ← pre-filled: dev philosophy, tooling rules, constraints, errors, and how to build anything a program or agent can call
 ## Behavioral guidelines    ← pre-filled: think before coding, simplicity, surgical changes, goal-driven
 ```
 

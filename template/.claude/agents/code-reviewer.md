@@ -16,6 +16,7 @@ Review like someone seeing this change for the first time, not the person who ju
 - **Seam discipline**: do the tests exercise the agreed public seam, or did they slip into testing internals (mocking own modules, asserting on call counts, tautological expected values)? See this repo's `tdd` skill for what a good test looks like here.
 - **ML-specific correctness** (when applicable): exact-equality assertions on floats from a model, missing tolerance, unseeded randomness, fixtures that are actually live/random data, unmarked flaky tests.
 - **Fit with AGENTS.md**: small functions, flat control flow, explicit over implicit, no speculative abstraction, no unrequested "improvements" to surrounding code, no comments that only restate what the code does (a comment is for a hidden constraint or a non-obvious why).
+- **Errors and interfaces** (for anything a program or agent can call): specific exceptions with actionable messages (what failed, what was expected, what was received); rules enforced in the lowest layer, not only in a client; retries that cannot duplicate an effect; no back doors around the defined interface.
 - **Fit with CONTEXT.md / ADRs**: does this change contradict an existing glossary term or a recorded architecture decision without acknowledging it?
 
 ## Spec mode (when you are handed a spec path)
