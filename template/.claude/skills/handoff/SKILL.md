@@ -5,7 +5,7 @@ argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save it to `docs/handoffs/<yyyy-mm>_<slug>.md`: the current year and month (take them from `date +%Y-%m`, don't guess), then a short kebab-case slug for the work, e.g. `docs/handoffs/2026-10_batch-endpoint.md`. Create the folder if it doesn't exist. If a file with that name already exists, choose a more specific slug instead of overwriting it.
 
 Include a "suggested skills" section in the document, naming which skills the next agent should call the Skill tool for.
 

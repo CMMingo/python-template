@@ -194,6 +194,7 @@ It also has a **Docs** section that spells out the three kinds of documentation 
 | `docs/ADRs/` | Architecture decision records — hard-to-reverse decisions with a real trade-off | `domain-modeling` |
 | `docs/specs/<type>_<name>/` | One folder per piece of work: `SPEC.md`, `PLAN.md`, `REPORT.md`, all directly in the folder | `/spec`, `implement` |
 | `docs/debug/` | One report per bug investigation (`<slug>.md`); separate because one investigation can touch several specs | `debugger` |
+| `docs/handoffs/` | One note per handoff (`<yyyy-mm>_<slug>.md`) so a fresh session can continue the work | `/handoff` |
 | `docs/clarifications/` | Your own scratch notes for understanding a topic; gitignored, not read by the skills unless you point at a file | you |
 | `docs/build/` | Generated API docs (gitignored) | `pdoc` via `just docs` |
 

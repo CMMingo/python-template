@@ -79,6 +79,7 @@ Dependencies are not written by hand: they were resolved to their latest version
 │   ├── specs/                  # one folder per spec: SPEC.md, PLAN.md, REPORT.md (committed -- see /spec)
 │   ├── ADRs/                   # architecture decision records (committed -- see domain-modeling)
 │   ├── debug/                  # one report per bug investigation (committed -- see diagnosing-bugs)
+│   ├── handoffs/               # notes for picking up work in a fresh session (committed -- see handoff)
 │   ├── clarifications/         # personal notes while learning a topic (gitignored)
 │   └── build/                  # generated API docs from `just docs` (gitignored)
 {%- if project_layout == 'simple' %}
@@ -115,6 +116,7 @@ This project keeps several kinds of documentation, each with its own purpose, sc
 | `docs/ADRs/` | Architecture decision records -- hard-to-reverse, non-obvious decisions with a real trade-off behind them. | Project-wide, same lifecycle as `CONTEXT.md`. | `domain-modeling` |
 | `docs/specs/<type>_<name>/` | One folder per spec (`<type>` is `feat`, `fix`, or `refactor`): `SPEC.md` (problem, solution, decisions), `PLAN.md` (a seam-organized task breakdown), and `REPORT.md` (what `implement` did, updated in place). All three sit directly in the folder. | Per spec -- that piece of work's own task list and outcome, not shared with any other spec. | `/spec`, `implement` |
 | `docs/debug/` | One report per bug investigation, `<slug>.md`: the hypotheses tested, the diagnosis and the fix. Separate from specs because one investigation can touch several of them. | Per bug. | `debugger` |
+| `docs/handoffs/` | One note per handoff, `<yyyy-mm>_<slug>.md`: where the work stands and which skills the next session should use, written so a fresh agent can continue. | Per handoff. | `handoff` |
 | `docs/clarifications/` | Personal scratch notes for understanding a new topic while working on a task. Gitignored: never committed, and not read by the skills unless you point at a file. | Just you. | You |
 | `docs/build/` | Generated API docs (gitignored). | Rebuilt on demand. | `pdoc`, via `just docs` |
 
