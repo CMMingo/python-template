@@ -29,11 +29,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/destructive_guard.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/destructive_guard.py\""
           },
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/test_gate.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/test_gate.py\""
           }
         ]
       }
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/format_python.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/format_python.py\""
           }
         ]
       }
